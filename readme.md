@@ -1,25 +1,25 @@
 nvidia@nvidia-desktop:~/galaxea/install/startup_config/share/startup_config/script$ ros2 node info /vr_controller 
 /vr_controller
   Subscribers:
-    /hdas/feedback_arm_left: sensor_msgs/msg/JointState
+    <!-- /hdas/feedback_arm_left: sensor_msgs/msg/JointState
     /hdas/feedback_arm_right: sensor_msgs/msg/JointState
     /hdas/feedback_gripper_left: sensor_msgs/msg/JointState
     /hdas/feedback_gripper_right: sensor_msgs/msg/JointState
     /motion_control/pose_ee_arm_left: geometry_msgs/msg/PoseStamped
     /motion_control/pose_ee_arm_right: geometry_msgs/msg/PoseStamped
     /motion_target/target_pose_arm_left: geometry_msgs/msg/PoseStamped
-    /motion_target/target_pose_arm_right: geometry_msgs/msg/PoseStamped
-    /parameter_events: rcl_interfaces/msg/ParameterEvent
-    /vr_pose: teleoperation_msg_ros2/msg/VrPose
+    /motion_target/target_pose_arm_right: geometry_msgs/msg/PoseStamped -->
+    <!-- /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /vr_pose: teleoperation_msg_ros2/msg/VrPose -->
   Publishers:
     /motion_control/control_arm_left: hdas_msg/msg/MotorControl
     /motion_control/control_arm_right: hdas_msg/msg/MotorControl
-    /motion_target/target_joint_state_arm_left: sensor_msgs/msg/JointState
-    /motion_target/target_joint_state_arm_right: sensor_msgs/msg/JointState
-    /motion_target/target_pose_arm_left: geometry_msgs/msg/PoseStamped
-    /motion_target/target_pose_arm_right: geometry_msgs/msg/PoseStamped
-    /motion_target/target_position_gripper_left: sensor_msgs/msg/JointState
-    /motion_target/target_position_gripper_right: sensor_msgs/msg/JointState
+    <!-- /motion_target/target_joint_state_arm_left: sensor_msgs/msg/JointState
+    /motion_target/target_joint_state_arm_right: sensor_msgs/msg/JointState -->
+    <!-- /motion_target/target_pose_arm_left: geometry_msgs/msg/PoseStamped
+    /motion_target/target_pose_arm_right: geometry_msgs/msg/PoseStamped -->
+    <!-- /motion_target/target_position_gripper_left: sensor_msgs/msg/JointState
+    /motion_target/target_position_gripper_right: sensor_msgs/msg/JointState -->
     /motion_target/target_speed_chassis: geometry_msgs/msg/TwistStamped
     /motion_target/target_speed_torso: geometry_msgs/msg/TwistStamped
     /parameter_events: rcl_interfaces/msg/ParameterEvent
@@ -42,10 +42,10 @@ nvidia@nvidia-desktop:~/galaxea/install/startup_config/share/startup_config/scri
 
 nvidia@nvidia-desktop:~/galaxea/install/startup_config/share/startup_config/script$ ros2 node info /vr_data_receiver 
 /vr_data_receiver
-  Subscribers:
+  <!-- Subscribers:
     /parameter_events: rcl_interfaces/msg/ParameterEvent
   Publishers:
-    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /parameter_events: rcl_interfaces/msg/ParameterEvent -->
     /rosout: rcl_interfaces/msg/Log
     /vr_pose: teleoperation_msg_ros2/msg/VrPose
   Service Servers:
@@ -61,5 +61,10 @@ nvidia@nvidia-desktop:~/galaxea/install/startup_config/share/startup_config/scri
 
   Action Clients:
 
-nvidia@nvidia-desktop:~/galaxea/install/startup_config/share/startup_config/script$ 
+
+scp -rp gala* nvidia@10.0.42.184:~/tinker_ws
+
+
+
+
 

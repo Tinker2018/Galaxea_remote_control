@@ -1,0 +1,103 @@
+namespace robot_msg_fbs;  // 原 udp_communication → robot_msg_fbs
+
+enum RobotMsgType: uint16 {
+    UNKNOWN = 0,
+    FEEDBACK_ARM_LEFT = 1,
+    FEEDBACK_ARM_RIGHT = 2,
+    FEEDBACK_GRIPPER_LEFT = 3,
+    FEEDBACK_GRIPPER_RIGHT = 4,
+    POSE_EE_LEFT_ARM = 5,
+    POSE_EE_RIGHT_ARM = 6,
+    TARGET_POSE_ARM_LEFT = 7,
+    TARGET_POSE_ARM_RIGHT = 8,
+    TARGET_JOINT_STATE_ARM_LEFT = 9,
+    TARGET_JOINT_STATE_ARM_RIGHT = 10,
+    TARGET_POSITION_GRIPPER_LEFT = 11,
+    TARGET_POSITION_GRIPPER_RIGHT = 12,
+    TARGET_SPEED_CHASSIS = 13,
+    TARGET_SPEED_TORSO = 14,
+    CONTROL_ARM_LEFT = 15,
+    CONTROL_ARM_RIGHT = 16
+}
+
+// 新增：对应 std_msgs/Header（ROS标准头）
+table Header {
+    stamp_sec: int32;        // 对应 builtin_interfaces/Time.sec（ROS中为int32）
+    stamp_nanosec: uint32;   // 对应 builtin_interfaces/Time.nanosec（ROS中为uint32）
+    frame_id: string;        // 坐标系ID
+}
+
+// 新增：对应 hdas_msg/msg/MotorControl
+table MotorControl {
+    msg_type: RobotMsgType = UNKNOWN;  // 关联枚举（15/16）
+    header: Header;                    // 标准头（时间戳+坐标系）
+    name: string;                      // 电机组名称
+    p_des: [float];                    // 目标位置数组
+    v_des: [float];                    // 目标速度数组
+    kp: [float];                       // 比例增益数组
+    kd: [float];                       // 微分增益数组
+    t_ff: [float];                     // 前馈力矩数组
+    mode: uint8;                       // 控制模式（uint8）
+}
+
+// 对应 geometry_msgs/msg/Twist（线速度+角速度）
+table Twist {
+    linear_x: float;  // 线速度x轴
+    linear_y: float;  // 线速度y轴
+    linear_z: float;  // 线速度z轴
+    angular_x: float; // 角速度x轴
+    angular_y: float; // 角速度y轴
+    angular_z: float; // 角速度z轴
+}
+
+// 对应 geometry_msgs/msg/TwistStamped（带时间戳和坐标系的Twist）
+table TwistStamped {
+    msg_type: RobotMsgType = UNKNOWN;  // 关联枚举（13/14）
+    frame_id: string;                 // 坐标系ID
+    stamp_sec: int64;                 // 时间戳秒数
+    stamp_nanosec: int64;             // 时间戳纳秒数
+    twist: Twist;                     // 速度数据
+}
+
+table Pose {
+    x: float;
+    y: float;
+    z: float;
+    qx: float;
+    qy: float;
+    qz: float;
+    qw: float;
+}
+
+table JointState {
+    msg_type: RobotMsgType = UNKNOWN;
+    names: [string];
+    positions: [float];
+    velocities: [float];
+    efforts: [float];
+    stamp_sec: int64;
+    stamp_nanosec: int64;
+    frame_id: string;
+}
+
+table PoseStamped {
+    msg_type: RobotMsgType = UNKNOWN;
+    frame_id: string;
+    stamp_sec: int64;
+    stamp_nanosec: int64;
+    pose: Pose;
+}
+
+
+union Robot2PcMsg {
+    JointState,
+    PoseStamped,
+    TwistStamped,
+    MotorControl
+}
+
+table Robot2PcWrapper {
+    msg: Robot2PcMsg;
+}
+
+root_type Robot2PcWrapper;

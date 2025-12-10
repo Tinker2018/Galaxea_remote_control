@@ -14,6 +14,8 @@ find_package(geometry_msgs REQUIRED)
 find_package(ament_index_cpp REQUIRED)
 find_package(flatbuffers REQUIRED)
 find_package(yaml-cpp REQUIRED)
+# ========== 核心修改1：添加 hdas_msg 依赖查找 ==========
+find_package(hdas_msg REQUIRED)
 
 # 包含头文件目录（一级 include + 生成的 FlatBuffer 头文件目录）
 include_directories(
@@ -86,6 +88,8 @@ ament_target_dependencies(flatbuffer_utils
   sensor_msgs
   geometry_msgs
   flatbuffers
+  # ========== 核心修改2：flatbuffer_utils 依赖 hdas_msg ==========
+  hdas_msg
 )
 target_link_libraries(flatbuffer_utils
   udp_socket
@@ -108,6 +112,8 @@ ament_target_dependencies(robot_tele_node
   sensor_msgs
   geometry_msgs
   ament_index_cpp
+  # ========== 核心修改3：robot_tele_node 依赖 hdas_msg（若用到 MotorControl） ==========
+  hdas_msg
 )
 target_link_libraries(robot_tele_node
   udp_socket
@@ -125,6 +131,7 @@ ament_target_dependencies(pc_tele_node
   rclcpp
   sensor_msgs
   geometry_msgs
+  hdas_msg
   ament_index_cpp
 )
 target_link_libraries(pc_tele_node
@@ -174,5 +181,7 @@ ament_export_libraries(
   flatbuffer_utils
 )
 ament_export_targets(export_${PROJECT_NAME})
+# ========== 核心修改4：导出 hdas_msg 依赖 ==========
+ament_export_dependencies(hdas_msg)
 
 ament_package()
