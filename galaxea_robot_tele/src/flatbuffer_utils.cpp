@@ -1,8 +1,8 @@
-#include "udp_flatbuffer_utils.hpp"
+#include "flatbuffer_utils.hpp"
 
 namespace galaxea_robot_tele {
 
-flatbuffers::Offset<robot_msg_fbs::Robot2PcWrapper> UDPFlatbufferUtils::encode_joint_state(
+flatbuffers::Offset<robot_msg_fbs::Robot2PcWrapper> FlatbufferUtils::encode_joint_state(
     flatbuffers::FlatBufferBuilder& builder,
     robot_msg_fbs::RobotMsgType msg_type,
     const sensor_msgs::msg::JointState& ros_msg) {
@@ -34,7 +34,7 @@ flatbuffers::Offset<robot_msg_fbs::Robot2PcWrapper> UDPFlatbufferUtils::encode_j
     );
 }
 
-flatbuffers::Offset<robot_msg_fbs::Robot2PcWrapper> UDPFlatbufferUtils::encode_pose_stamped(
+flatbuffers::Offset<robot_msg_fbs::Robot2PcWrapper> FlatbufferUtils::encode_pose_stamped(
     flatbuffers::FlatBufferBuilder& builder,
     robot_msg_fbs::RobotMsgType msg_type,
     const geometry_msgs::msg::PoseStamped& ros_msg) {
@@ -65,7 +65,7 @@ flatbuffers::Offset<robot_msg_fbs::Robot2PcWrapper> UDPFlatbufferUtils::encode_p
     );
 }
 
-void UDPFlatbufferUtils::decode_joint_state(
+void FlatbufferUtils::decode_joint_state(
     const robot_msg_fbs::JointState* fb_msg,
     sensor_msgs::msg::JointState& ros_msg) {
     
@@ -94,7 +94,7 @@ void UDPFlatbufferUtils::decode_joint_state(
     }
 }
 
-void UDPFlatbufferUtils::decode_pose_stamped(
+void FlatbufferUtils::decode_pose_stamped(
     const robot_msg_fbs::PoseStamped* fb_msg,
     geometry_msgs::msg::PoseStamped& ros_msg) {
     

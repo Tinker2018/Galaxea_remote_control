@@ -2,7 +2,7 @@
 #define PC_TELE_NODE_HPP_
 
 #include "udp_socket.hpp"
-#include "udp_flatbuffer_utils.hpp"
+#include "flatbuffer_utils.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
@@ -40,7 +40,10 @@ private:
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_pc_target_pose_arm_left_;
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_pc_target_pose_arm_right_;
 
-
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_target_joint_state_arm_left_;
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_target_joint_state_arm_right_;
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_target_position_gripper_left_;
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_target_position_gripper_right_;
 };
 
 }  // namespace galaxea_robot_tele

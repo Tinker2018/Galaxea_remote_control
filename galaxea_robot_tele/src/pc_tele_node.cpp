@@ -116,14 +116,14 @@ void PCTeleNode::recv_loop() {
 void PCTeleNode::parse_joint_state(const robot_msg_fbs::JointState* fb_msg, 
                                   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr publisher) {
     sensor_msgs::msg::JointState ros_msg;
-    UDPFlatbufferUtils::decode_joint_state(fb_msg, ros_msg);
+    FlatbufferUtils::decode_joint_state(fb_msg, ros_msg);
     publisher->publish(ros_msg);
 }
 
 void PCTeleNode::parse_pose_stamped(const robot_msg_fbs::PoseStamped* fb_msg,
                                   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher) {
     geometry_msgs::msg::PoseStamped ros_msg;
-    UDPFlatbufferUtils::decode_pose_stamped(fb_msg, ros_msg);
+    FlatbufferUtils::decode_pose_stamped(fb_msg, ros_msg);
     publisher->publish(ros_msg);
 }
 

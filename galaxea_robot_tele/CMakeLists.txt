@@ -77,22 +77,22 @@ target_include_directories(udp_socket PUBLIC
 )
 
 # -------------------------- 3. 编译 FlatBuffer 编解码工具库 --------------------------
-add_library(udp_flatbuffer_utils SHARED
-  src/udp_flatbuffer_utils.cpp
-  include/udp_flatbuffer_utils.hpp  # 一级 include 路径
+add_library(flatbuffer_utils SHARED
+  src/flatbuffer_utils.cpp
+  include/flatbuffer_utils.hpp  # 一级 include 路径
 )
-ament_target_dependencies(udp_flatbuffer_utils
+ament_target_dependencies(flatbuffer_utils
   rclcpp
   sensor_msgs
   geometry_msgs
   flatbuffers
 )
-target_link_libraries(udp_flatbuffer_utils
+target_link_libraries(flatbuffer_utils
   udp_socket
   ${flatbuffers_LIBRARIES}
 )
-add_dependencies(udp_flatbuffer_utils generate_flatbuffers)
-target_include_directories(udp_flatbuffer_utils PUBLIC
+add_dependencies(flatbuffer_utils generate_flatbuffers)
+target_include_directories(flatbuffer_utils PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}>  # 新增：包含include目录
   $<INSTALL_INTERFACE:include>
@@ -111,7 +111,7 @@ ament_target_dependencies(robot_tele_node
 )
 target_link_libraries(robot_tele_node
   udp_socket
-  udp_flatbuffer_utils
+  flatbuffer_utils
   ${YAML_CPP_LIBRARIES}
 )
 add_dependencies(robot_tele_node generate_flatbuffers)
@@ -129,7 +129,7 @@ ament_target_dependencies(pc_tele_node
 )
 target_link_libraries(pc_tele_node
   udp_socket
-  udp_flatbuffer_utils
+  flatbuffer_utils
   ${YAML_CPP_LIBRARIES}
 )
 add_dependencies(pc_tele_node generate_flatbuffers)
@@ -138,7 +138,7 @@ add_dependencies(pc_tele_node generate_flatbuffers)
 # 安装库文件
 install(TARGETS
   udp_socket
-  udp_flatbuffer_utils
+  flatbuffer_utils
   EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
@@ -171,7 +171,7 @@ install(DIRECTORY config launch schemas
 ament_export_include_directories(include)
 ament_export_libraries(
   udp_socket
-  udp_flatbuffer_utils
+  flatbuffer_utils
 )
 ament_export_targets(export_${PROJECT_NAME})
 

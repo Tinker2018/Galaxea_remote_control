@@ -37,11 +37,15 @@ enum RobotMsgType : uint16_t {
   RobotMsgType_POSE_EE_RIGHT_ARM = 6,
   RobotMsgType_TARGET_POSE_ARM_LEFT = 7,
   RobotMsgType_TARGET_POSE_ARM_RIGHT = 8,
+  RobotMsgType_TARGET_JOINT_STATE_ARM_LEFT = 9,
+  RobotMsgType_TARGET_JOINT_STATE_ARM_RIGHT = 10,
+  RobotMsgType_TARGET_POSITION_GRIPPER_LEFT = 11,
+  RobotMsgType_TARGET_POSITION_GRIPPER_RIGHT = 12,
   RobotMsgType_MIN = RobotMsgType_UNKNOWN,
-  RobotMsgType_MAX = RobotMsgType_TARGET_POSE_ARM_RIGHT
+  RobotMsgType_MAX = RobotMsgType_TARGET_POSITION_GRIPPER_RIGHT
 };
 
-inline const RobotMsgType (&EnumValuesRobotMsgType())[9] {
+inline const RobotMsgType (&EnumValuesRobotMsgType())[13] {
   static const RobotMsgType values[] = {
     RobotMsgType_UNKNOWN,
     RobotMsgType_FEEDBACK_ARM_LEFT,
@@ -51,13 +55,17 @@ inline const RobotMsgType (&EnumValuesRobotMsgType())[9] {
     RobotMsgType_POSE_EE_LEFT_ARM,
     RobotMsgType_POSE_EE_RIGHT_ARM,
     RobotMsgType_TARGET_POSE_ARM_LEFT,
-    RobotMsgType_TARGET_POSE_ARM_RIGHT
+    RobotMsgType_TARGET_POSE_ARM_RIGHT,
+    RobotMsgType_TARGET_JOINT_STATE_ARM_LEFT,
+    RobotMsgType_TARGET_JOINT_STATE_ARM_RIGHT,
+    RobotMsgType_TARGET_POSITION_GRIPPER_LEFT,
+    RobotMsgType_TARGET_POSITION_GRIPPER_RIGHT
   };
   return values;
 }
 
 inline const char * const *EnumNamesRobotMsgType() {
-  static const char * const names[10] = {
+  static const char * const names[14] = {
     "UNKNOWN",
     "FEEDBACK_ARM_LEFT",
     "FEEDBACK_ARM_RIGHT",
@@ -67,13 +75,17 @@ inline const char * const *EnumNamesRobotMsgType() {
     "POSE_EE_RIGHT_ARM",
     "TARGET_POSE_ARM_LEFT",
     "TARGET_POSE_ARM_RIGHT",
+    "TARGET_JOINT_STATE_ARM_LEFT",
+    "TARGET_JOINT_STATE_ARM_RIGHT",
+    "TARGET_POSITION_GRIPPER_LEFT",
+    "TARGET_POSITION_GRIPPER_RIGHT",
     nullptr
   };
   return names;
 }
 
 inline const char *EnumNameRobotMsgType(RobotMsgType e) {
-  if (::flatbuffers::IsOutRange(e, RobotMsgType_UNKNOWN, RobotMsgType_TARGET_POSE_ARM_RIGHT)) return "";
+  if (::flatbuffers::IsOutRange(e, RobotMsgType_UNKNOWN, RobotMsgType_TARGET_POSITION_GRIPPER_RIGHT)) return "";
   const size_t index = static_cast<size_t>(e);
   return EnumNamesRobotMsgType()[index];
 }
@@ -230,7 +242,7 @@ inline ::flatbuffers::Offset<Pose> CreatePose(
 struct JointState FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef JointStateBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
-    VT_SUB_TYPE = 4,
+    VT_MSG_TYPE = 4,
     VT_NAMES = 6,
     VT_POSITIONS = 8,
     VT_VELOCITIES = 10,
@@ -240,7 +252,7 @@ struct JointState FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
     VT_FRAME_ID = 18
   };
   robot_msg_fbs::RobotMsgType msg_type() const {
-    return static_cast<robot_msg_fbs::RobotMsgType>(GetField<uint16_t>(VT_SUB_TYPE, 0));
+    return static_cast<robot_msg_fbs::RobotMsgType>(GetField<uint16_t>(VT_MSG_TYPE, 0));
   }
   const ::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>> *names() const {
     return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>> *>(VT_NAMES);
@@ -265,7 +277,7 @@ struct JointState FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   }
   bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
-           VerifyField<uint16_t>(verifier, VT_SUB_TYPE, 2) &&
+           VerifyField<uint16_t>(verifier, VT_MSG_TYPE, 2) &&
            VerifyOffset(verifier, VT_NAMES) &&
            verifier.VerifyVector(names()) &&
            verifier.VerifyVectorOfStrings(names()) &&
@@ -288,7 +300,7 @@ struct JointStateBuilder {
   ::flatbuffers::FlatBufferBuilder &fbb_;
   ::flatbuffers::uoffset_t start_;
   void add_msg_type(robot_msg_fbs::RobotMsgType msg_type) {
-    fbb_.AddElement<uint16_t>(JointState::VT_SUB_TYPE, static_cast<uint16_t>(msg_type), 0);
+    fbb_.AddElement<uint16_t>(JointState::VT_MSG_TYPE, static_cast<uint16_t>(msg_type), 0);
   }
   void add_names(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>>> names) {
     fbb_.AddOffset(JointState::VT_NAMES, names);
@@ -374,14 +386,14 @@ inline ::flatbuffers::Offset<JointState> CreateJointStateDirect(
 struct PoseStamped FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef PoseStampedBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
-    VT_SUB_TYPE = 4,
+    VT_MSG_TYPE = 4,
     VT_FRAME_ID = 6,
     VT_STAMP_SEC = 8,
     VT_STAMP_NANOSEC = 10,
     VT_POSE = 12
   };
   robot_msg_fbs::RobotMsgType msg_type() const {
-    return static_cast<robot_msg_fbs::RobotMsgType>(GetField<uint16_t>(VT_SUB_TYPE, 0));
+    return static_cast<robot_msg_fbs::RobotMsgType>(GetField<uint16_t>(VT_MSG_TYPE, 0));
   }
   const ::flatbuffers::String *frame_id() const {
     return GetPointer<const ::flatbuffers::String *>(VT_FRAME_ID);
@@ -397,7 +409,7 @@ struct PoseStamped FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   }
   bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
-           VerifyField<uint16_t>(verifier, VT_SUB_TYPE, 2) &&
+           VerifyField<uint16_t>(verifier, VT_MSG_TYPE, 2) &&
            VerifyOffset(verifier, VT_FRAME_ID) &&
            verifier.VerifyString(frame_id()) &&
            VerifyField<int64_t>(verifier, VT_STAMP_SEC, 8) &&
@@ -413,7 +425,7 @@ struct PoseStampedBuilder {
   ::flatbuffers::FlatBufferBuilder &fbb_;
   ::flatbuffers::uoffset_t start_;
   void add_msg_type(robot_msg_fbs::RobotMsgType msg_type) {
-    fbb_.AddElement<uint16_t>(PoseStamped::VT_SUB_TYPE, static_cast<uint16_t>(msg_type), 0);
+    fbb_.AddElement<uint16_t>(PoseStamped::VT_MSG_TYPE, static_cast<uint16_t>(msg_type), 0);
   }
   void add_frame_id(::flatbuffers::Offset<::flatbuffers::String> frame_id) {
     fbb_.AddOffset(PoseStamped::VT_FRAME_ID, frame_id);

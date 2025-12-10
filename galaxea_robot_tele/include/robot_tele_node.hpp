@@ -2,7 +2,7 @@
 #define ROBOT_TELE_NODE_HPP_
 
 #include "udp_socket.hpp"
-#include "udp_flatbuffer_utils.hpp"
+#include "flatbuffer_utils.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"

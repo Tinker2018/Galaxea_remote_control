@@ -9,7 +9,7 @@
 
 namespace galaxea_robot_tele {
 
-class UDPFlatbufferUtils {
+class FlatbufferUtils {
 public:
     // 编码关节状态消息（修复：参数类型添加 robot_msg_fbs:: 命名空间）
     static flatbuffers::Offset<robot_msg_fbs::Robot2PcWrapper> encode_joint_state(

@@ -87,7 +87,7 @@ void RobotTeleNode::init_subscribers() {
 
 void RobotTeleNode::send_joint_state(robot_msg_fbs::RobotMsgType msg_type, const sensor_msgs::msg::JointState& msg) {
     flatbuffers::FlatBufferBuilder builder(1024);
-    auto wrapper = UDPFlatbufferUtils::encode_joint_state(builder, msg_type, msg);
+    auto wrapper = FlatbufferUtils::encode_joint_state(builder, msg_type, msg);
     robot_msg_fbs::FinishRobot2PcWrapperBuffer(builder, wrapper);
 
     if (udp_socket_->send(builder.GetBufferPointer(), builder.GetSize())) {
@@ -99,7 +99,7 @@ void RobotTeleNode::send_joint_state(robot_msg_fbs::RobotMsgType msg_type, const
 
 void RobotTeleNode::send_pose_stamped(robot_msg_fbs::RobotMsgType msg_type, const geometry_msgs::msg::PoseStamped& msg) {
     flatbuffers::FlatBufferBuilder builder(1024);
-    auto wrapper = UDPFlatbufferUtils::encode_pose_stamped(builder, msg_type, msg);
+    auto wrapper = FlatbufferUtils::encode_pose_stamped(builder, msg_type, msg);
     robot_msg_fbs::FinishRobot2PcWrapperBuffer(builder, wrapper);
 
     if (udp_socket_->send(builder.GetBufferPointer(), builder.GetSize())) {
