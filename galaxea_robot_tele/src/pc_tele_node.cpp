@@ -19,7 +19,46 @@ PCTeleNode::PCTeleNode() : Node("pc_tele_node"), is_running_(true) {
         return;
     }
 
-    init_publishers();
+
+    sub_target_joint_state_arm_left_ = this->create_subscription<sensor_msgs::msg::JointState>(
+        "/hdas/target_joint_state_arm_left", 10,
+        [this](const sensor_msgs::msg::JointState::SharedPtr msg) {
+            this->send_joint_state(robot_msg_fbs::RobotMsgType_TARGET_JOINT_STATE_ARM_LEFT, *msg);
+        }
+    );
+
+    sub_target_joint_state_arm_right_ = this->create_subscription<sensor_msgs::msg::JointState>(
+        "/hdas/target_joint_state_arm_right", 10,
+        [this](const sensor_msgs::msg::JointState::SharedPtr msg) {
+            this->send_joint_state(robot_msg_fbs::RobotMsgType_TARGET_JOINT_STATE_ARM_RIGHT, *msg);
+        }
+    );
+
+    sub_target_position_gripper_left_ = this->create_subscription<sensor_msgs::msg::JointState>(
+        "/hdas/target_position_gripper_left", 10,
+        [this](const sensor_msgs::msg::JointState::SharedPtr msg) {
+            this->send_joint_state(robot_msg_fbs::RobotMsgType_TARGET_POSITION_GRIPPER_LEFT, *msg);
+        }
+    );
+
+    sub_target_position_gripper_right_ = this->create_subscription<sensor_msgs::msg::JointState>(
+        "/hdas/target_position_gripper_right", 10,
+        [this](const sensor_msgs::msg::JointState::SharedPtr msg) {
+            this->send_joint_state(robot_msg_fbs::RobotMsgType_TARGET_POSITION_GRIPPER_RIGHT, *msg);
+        }
+    );
+
+    pub_left_arm_joint_ = this->create_publisher<sensor_msgs::msg::JointState>("/hdas/feedback_arm_left", 10);
+    pub_right_arm_joint_ = this->create_publisher<sensor_msgs::msg::JointState>("/hdas/feedback_arm_right", 10);
+    pub_left_gripper_joint_ = this->create_publisher<sensor_msgs::msg::JointState>("/hdas/feedback_gripper_left", 10);
+    pub_right_gripper_joint_ = this->create_publisher<sensor_msgs::msg::JointState>("/hdas/feedback_gripper_right", 10);
+    pub_pose_ee_arm_left_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_control/pose_ee_arm_left", 10);
+    pub_pose_ee_arm_right_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_control/pose_ee_arm_right", 10);
+    pub_pc_target_pose_arm_left_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_target/target_pose_arm_left", 10);
+    pub_pc_target_pose_arm_right_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_target/target_pose_arm_right", 10);
+        
+    RCLCPP_INFO(this->get_logger(), "PC initialized");
+
     recv_thread_ = std::thread(&PCTeleNode::recv_loop, this);
 }
 
@@ -30,18 +69,7 @@ PCTeleNode::~PCTeleNode() {
     }
 }
 
-void PCTeleNode::init_publishers() {
-    pub_left_arm_joint_ = this->create_publisher<sensor_msgs::msg::JointState>("/hdas/feedback_arm_left", 10);
-    pub_right_arm_joint_ = this->create_publisher<sensor_msgs::msg::JointState>("/hdas/feedback_arm_right", 10);
-    pub_left_gripper_joint_ = this->create_publisher<sensor_msgs::msg::JointState>("/hdas/feedback_gripper_left", 10);
-    pub_right_gripper_joint_ = this->create_publisher<sensor_msgs::msg::JointState>("/hdas/feedback_gripper_right", 10);
-    pub_pose_ee_arm_left_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_control/pose_ee_arm_left", 10);
-    pub_pose_ee_arm_right_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_control/pose_ee_arm_right", 10);
-    pub_pc_target_pose_arm_left_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_target/target_pose_arm_left", 10);
-    pub_pc_target_pose_arm_right_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_target/target_pose_arm_right", 10);
-        
-    RCLCPP_INFO(this->get_logger(), "PC publishers initialized");
-}
+
 
 void PCTeleNode::recv_loop() {
     const size_t BUF_SIZE = udp_config_.buffer_size;
@@ -125,6 +153,30 @@ void PCTeleNode::parse_pose_stamped(const robot_msg_fbs::PoseStamped* fb_msg,
     geometry_msgs::msg::PoseStamped ros_msg;
     FlatbufferUtils::decode_pose_stamped(fb_msg, ros_msg);
     publisher->publish(ros_msg);
+}
+
+void PCTeleNode::send_joint_state(robot_msg_fbs::RobotMsgType msg_type, const sensor_msgs::msg::JointState& msg) {
+    flatbuffers::FlatBufferBuilder builder(1024);
+    auto wrapper = FlatbufferUtils::encode_joint_state(builder, msg_type, msg);
+    robot_msg_fbs::FinishRobot2PcWrapperBuffer(builder, wrapper);
+
+    if (udp_socket_->send(builder.GetBufferPointer(), builder.GetSize())) {
+        RCLCPP_DEBUG(this->get_logger(), "Joint state sent (type: %d)", msg_type);
+    } else {
+        RCLCPP_WARN(this->get_logger(), "Joint state send failed (type: %d)", msg_type);
+    }
+}
+
+void PCTeleNode::send_pose_stamped(robot_msg_fbs::RobotMsgType msg_type, const geometry_msgs::msg::PoseStamped& msg) {
+    flatbuffers::FlatBufferBuilder builder(1024);
+    auto wrapper = FlatbufferUtils::encode_pose_stamped(builder, msg_type, msg);
+    robot_msg_fbs::FinishRobot2PcWrapperBuffer(builder, wrapper);
+
+    if (udp_socket_->send(builder.GetBufferPointer(), builder.GetSize())) {
+        RCLCPP_DEBUG(this->get_logger(), "Pose stamped sent (type: %d)", msg_type);
+    } else {
+        RCLCPP_WARN(this->get_logger(), "Pose stamped send failed (type: %d)", msg_type);
+    }
 }
 
 

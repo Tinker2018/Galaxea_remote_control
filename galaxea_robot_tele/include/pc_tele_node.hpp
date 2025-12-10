@@ -18,9 +18,11 @@ public:
     ~PCTeleNode() override;
 
 private:
-    void init_publishers();
     void recv_loop();
-    // 修复：参数类型添加 robot_msg_fbs:: 命名空间
+
+    void send_joint_state(robot_msg_fbs::RobotMsgType msg_type, const sensor_msgs::msg::JointState& msg);
+    void send_pose_stamped(robot_msg_fbs::RobotMsgType msg_type, const geometry_msgs::msg::PoseStamped& msg);
+
     void parse_joint_state(const robot_msg_fbs::JointState* fb_msg, 
                           rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr publisher);
     void parse_pose_stamped(const robot_msg_fbs::PoseStamped* fb_msg,
@@ -31,6 +33,11 @@ private:
     std::thread recv_thread_;
     std::atomic<bool> is_running_;
 
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_target_joint_state_arm_left_;
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_target_joint_state_arm_right_;
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_target_position_gripper_left_;
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_target_position_gripper_right_;
+
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_left_arm_joint_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_right_arm_joint_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_left_gripper_joint_;
@@ -40,10 +47,7 @@ private:
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_pc_target_pose_arm_left_;
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_pc_target_pose_arm_right_;
 
-    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_target_joint_state_arm_left_;
-    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_target_joint_state_arm_right_;
-    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_target_position_gripper_left_;
-    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_target_position_gripper_right_;
+
 };
 
 }  // namespace galaxea_robot_tele
