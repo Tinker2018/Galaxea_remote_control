@@ -21,28 +21,28 @@ PCTeleNode::PCTeleNode() : Node("pc_tele_node"), is_running_(true) {
 
 
     sub_target_joint_state_arm_left_ = this->create_subscription<sensor_msgs::msg::JointState>(
-        "/hdas/target_joint_state_arm_left", 10,
+        "/motion_target/target_joint_state_arm_left", 10,
         [this](const sensor_msgs::msg::JointState::SharedPtr msg) {
             this->send_joint_state(robot_msg_fbs::RobotMsgType_TARGET_JOINT_STATE_ARM_LEFT, *msg);
         }
     );
 
     sub_target_joint_state_arm_right_ = this->create_subscription<sensor_msgs::msg::JointState>(
-        "/hdas/target_joint_state_arm_right", 10,
+        "/motion_target/target_joint_state_arm_right", 10,
         [this](const sensor_msgs::msg::JointState::SharedPtr msg) {
             this->send_joint_state(robot_msg_fbs::RobotMsgType_TARGET_JOINT_STATE_ARM_RIGHT, *msg);
         }
     );
 
     sub_target_position_gripper_left_ = this->create_subscription<sensor_msgs::msg::JointState>(
-        "/hdas/target_position_gripper_left", 10,
+        "/motion_target/target_position_gripper_left", 10,
         [this](const sensor_msgs::msg::JointState::SharedPtr msg) {
             this->send_joint_state(robot_msg_fbs::RobotMsgType_TARGET_POSITION_GRIPPER_LEFT, *msg);
         }
     );
 
     sub_target_position_gripper_right_ = this->create_subscription<sensor_msgs::msg::JointState>(
-        "/hdas/target_position_gripper_right", 10,
+        "/motion_target/target_position_gripper_right", 10,
         [this](const sensor_msgs::msg::JointState::SharedPtr msg) {
             this->send_joint_state(robot_msg_fbs::RobotMsgType_TARGET_POSITION_GRIPPER_RIGHT, *msg);
         }

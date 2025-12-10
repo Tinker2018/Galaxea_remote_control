@@ -1,5 +1,5 @@
 udp_config:
-  role: "pc"  # 角色设为PC
+  role: "robot"  # 角色设为PC
   buffer_size: 1024  # 缓冲区大小，保持不变
   robot:  # 机器人端配置对PC来说可留空（但结构需保留）
     local_ip: "10.0.42.184"
@@ -7,5 +7,7 @@ udp_config:
     target_ip: "10.0.42.25"
     target_port: 8888
   pc:
-    local_ip: "0.0.0.0"  # 监听PC所有网卡（推荐，无需改）
-    local_port: 8888  # PC本地绑定的端口（双端用8888）
+    local_ip: "10.0.42.25"
+    local_port: 8888
+    target_ip: "10.0.42.184"
+    target_port: 8888

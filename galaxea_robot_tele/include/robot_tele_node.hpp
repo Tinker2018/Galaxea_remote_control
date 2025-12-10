@@ -8,6 +8,7 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include <atomic>
 #include <memory>
+#include <thread>
 
 namespace galaxea_robot_tele {
 
@@ -18,6 +19,7 @@ public:
 
 private:
     void recv_loop();
+    
     void send_joint_state(robot_msg_fbs::RobotMsgType msg_type, const sensor_msgs::msg::JointState& msg);
     void send_pose_stamped(robot_msg_fbs::RobotMsgType msg_type, const geometry_msgs::msg::PoseStamped& msg);
     

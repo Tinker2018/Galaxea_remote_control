@@ -75,6 +75,11 @@ RobotTeleNode::RobotTeleNode() : Node("robot_tele_node"), is_running_(true)  {
         }
     );
 
+    pub_target_joint_state_arm_left_ = this->create_publisher<sensor_msgs::msg::JointState>("/motion_target/target_joint_state_arm_left", 10);
+    pub_target_joint_state_arm_right_ = this->create_publisher<sensor_msgs::msg::JointState>("/motion_target/target_joint_state_arm_right", 10);
+    pub_target_position_gripper_left_ = this->create_publisher<sensor_msgs::msg::JointState>("/motion_target/target_position_gripper_left", 10);
+    pub_target_position_gripper_right_ = this->create_publisher<sensor_msgs::msg::JointState>("/motion_target/target_position_gripper_right", 10);
+
     RCLCPP_INFO(this->get_logger(), "Robot initialized");
     recv_thread_ = std::thread(&RobotTeleNode::recv_loop, this);
 }
