@@ -1,12 +1,14 @@
-# 新增节点名称作为顶层键
-udp_communication_node:
-  ros__parameters:
-    udp_config:
-      pc_ip: "127.0.0.1"        # 基础配置，启动时可覆盖
-      robot_ip: "127.0.0.1"
-      udp_port: 8888
-      role: "pc"                # 默认角色，启动时动态修改
-      send_msg: "Hello Robot!"
-      buffer_size: 1024
-
-
+# UDP配置（嵌套结构，适配代码load_config逻辑）
+udp_config:
+  # 角色：pc（PC端，接收机器人数据）
+  role: "pc"
+  # 机器人端配置（代码会读取此部分用于PC主动发数据给机器人）
+  robot:
+    local_ip: "10.0.42.184"    # 机器人本地IP（eth1的IP）
+    local_port: 8889           # 机器人本地绑定的端口
+    target_ip: "10.0.42.25"    # 机器人要发送的目标IP（PC的IP）
+    target_port: 8888          # 机器人要发送的目标端口（PC监听端口）
+  # PC端核心配置（代码init_socket会读取此部分绑定本地端口）
+  pc:
+    local_ip: "0.0.0.0"        # PC监听所有网卡（必须，避免IP绑定失败）
+    local_port: 8888           # PC本地监听端口（和机器人端target_port一致）

@@ -3,17 +3,24 @@
 <package format="3">
   <name>udp_communication</name>
   <version>0.0.0</version>
-  <description>UDP communication between PC and Robot for ROS2 Humble</description>
-  <maintainer email="your_email@example.com">Your Name</maintainer>
+  <description>UDP通信：机器人订阅话题→PC发布话题</description>
+  <maintainer email="user@example.com">User</maintainer>
   <license>Apache-2.0</license>
 
+  <!-- 编译时依赖（新增 ament_index_cpp） -->
   <buildtool_depend>ament_cmake</buildtool_depend>
-  <depend>rclcpp</depend>
-  <depend>yaml-cpp</depend>
-  <depend>flatbuffers</depend>
-  
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
+  <build_depend>rclcpp</build_depend>
+  <build_depend>yaml-cpp</build_depend>
+  <build_depend>sensor_msgs</build_depend>   <!-- 关节消息 -->
+  <build_depend>geometry_msgs</build_depend> <!-- 位姿消息 -->
+  <build_depend>ament_index_cpp</build_depend> <!-- 新增：包路径依赖 -->
+
+  <!-- 运行时依赖（新增 ament_index_cpp） -->
+  <exec_depend>rclcpp</exec_depend>
+  <exec_depend>yaml-cpp</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>   <!-- 关节消息 -->
+  <exec_depend>geometry_msgs</exec_depend> <!-- 位姿消息 -->
+  <exec_depend>ament_index_cpp</exec_depend> <!-- 新增：包路径依赖 -->
 
   <export>
     <build_type>ament_cmake</build_type>

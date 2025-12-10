@@ -21,6 +21,15 @@ struct ControlCmdBuilder;
 struct Heartbeat;
 struct HeartbeatBuilder;
 
+struct Pose;
+struct PoseBuilder;
+
+struct JointState;
+struct JointStateBuilder;
+
+struct PoseStamped;
+struct PoseStampedBuilder;
+
 struct SensorData;
 struct SensorDataBuilder;
 
@@ -32,6 +41,51 @@ struct Pc2RobotWrapperBuilder;
 
 struct Robot2PcWrapper;
 struct Robot2PcWrapperBuilder;
+
+enum JointPoseSubType : uint16_t {
+  JointPoseSubType_UNKNOWN = 0,
+  JointPoseSubType_JOINT_STATE_LEFT_ARM = 1,
+  JointPoseSubType_JOINT_STATE_RIGHT_ARM = 2,
+  JointPoseSubType_JOINT_STATE_LEFT_GRIPPER = 3,
+  JointPoseSubType_JOINT_STATE_RIGHT_GRIPPER = 4,
+  JointPoseSubType_POSE_STAMPED_LEFT_ARM = 5,
+  JointPoseSubType_POSE_STAMPED_RIGHT_ARM = 6,
+  JointPoseSubType_MIN = JointPoseSubType_UNKNOWN,
+  JointPoseSubType_MAX = JointPoseSubType_POSE_STAMPED_RIGHT_ARM
+};
+
+inline const JointPoseSubType (&EnumValuesJointPoseSubType())[7] {
+  static const JointPoseSubType values[] = {
+    JointPoseSubType_UNKNOWN,
+    JointPoseSubType_JOINT_STATE_LEFT_ARM,
+    JointPoseSubType_JOINT_STATE_RIGHT_ARM,
+    JointPoseSubType_JOINT_STATE_LEFT_GRIPPER,
+    JointPoseSubType_JOINT_STATE_RIGHT_GRIPPER,
+    JointPoseSubType_POSE_STAMPED_LEFT_ARM,
+    JointPoseSubType_POSE_STAMPED_RIGHT_ARM
+  };
+  return values;
+}
+
+inline const char * const *EnumNamesJointPoseSubType() {
+  static const char * const names[8] = {
+    "UNKNOWN",
+    "JOINT_STATE_LEFT_ARM",
+    "JOINT_STATE_RIGHT_ARM",
+    "JOINT_STATE_LEFT_GRIPPER",
+    "JOINT_STATE_RIGHT_GRIPPER",
+    "POSE_STAMPED_LEFT_ARM",
+    "POSE_STAMPED_RIGHT_ARM",
+    nullptr
+  };
+  return names;
+}
+
+inline const char *EnumNameJointPoseSubType(JointPoseSubType e) {
+  if (::flatbuffers::IsOutRange(e, JointPoseSubType_UNKNOWN, JointPoseSubType_POSE_STAMPED_RIGHT_ARM)) return "";
+  const size_t index = static_cast<size_t>(e);
+  return EnumNamesJointPoseSubType()[index];
+}
 
 enum Pc2RobotMsg : uint8_t {
   Pc2RobotMsg_NONE = 0,
@@ -85,31 +139,37 @@ enum Robot2PcMsg : uint8_t {
   Robot2PcMsg_NONE = 0,
   Robot2PcMsg_SensorData = 1,
   Robot2PcMsg_StatusReport = 2,
+  Robot2PcMsg_JointState = 3,
+  Robot2PcMsg_PoseStamped = 4,
   Robot2PcMsg_MIN = Robot2PcMsg_NONE,
-  Robot2PcMsg_MAX = Robot2PcMsg_StatusReport
+  Robot2PcMsg_MAX = Robot2PcMsg_PoseStamped
 };
 
-inline const Robot2PcMsg (&EnumValuesRobot2PcMsg())[3] {
+inline const Robot2PcMsg (&EnumValuesRobot2PcMsg())[5] {
   static const Robot2PcMsg values[] = {
     Robot2PcMsg_NONE,
     Robot2PcMsg_SensorData,
-    Robot2PcMsg_StatusReport
+    Robot2PcMsg_StatusReport,
+    Robot2PcMsg_JointState,
+    Robot2PcMsg_PoseStamped
   };
   return values;
 }
 
 inline const char * const *EnumNamesRobot2PcMsg() {
-  static const char * const names[4] = {
+  static const char * const names[6] = {
     "NONE",
     "SensorData",
     "StatusReport",
+    "JointState",
+    "PoseStamped",
     nullptr
   };
   return names;
 }
 
 inline const char *EnumNameRobot2PcMsg(Robot2PcMsg e) {
-  if (::flatbuffers::IsOutRange(e, Robot2PcMsg_NONE, Robot2PcMsg_StatusReport)) return "";
+  if (::flatbuffers::IsOutRange(e, Robot2PcMsg_NONE, Robot2PcMsg_PoseStamped)) return "";
   const size_t index = static_cast<size_t>(e);
   return EnumNamesRobot2PcMsg()[index];
 }
@@ -124,6 +184,14 @@ template<> struct Robot2PcMsgTraits<udp_communication::SensorData> {
 
 template<> struct Robot2PcMsgTraits<udp_communication::StatusReport> {
   static const Robot2PcMsg enum_value = Robot2PcMsg_StatusReport;
+};
+
+template<> struct Robot2PcMsgTraits<udp_communication::JointState> {
+  static const Robot2PcMsg enum_value = Robot2PcMsg_JointState;
+};
+
+template<> struct Robot2PcMsgTraits<udp_communication::PoseStamped> {
+  static const Robot2PcMsg enum_value = Robot2PcMsg_PoseStamped;
 };
 
 bool VerifyRobot2PcMsg(::flatbuffers::Verifier &verifier, const void *obj, Robot2PcMsg type);
@@ -239,6 +307,351 @@ inline ::flatbuffers::Offset<Heartbeat> CreateHeartbeat(
   builder_.add_timestamp(timestamp);
   builder_.add_pc_status(pc_status);
   return builder_.Finish();
+}
+
+struct Pose FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef PoseBuilder Builder;
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_X = 4,
+    VT_Y = 6,
+    VT_Z = 8,
+    VT_QX = 10,
+    VT_QY = 12,
+    VT_QZ = 14,
+    VT_QW = 16
+  };
+  float x() const {
+    return GetField<float>(VT_X, 0.0f);
+  }
+  float y() const {
+    return GetField<float>(VT_Y, 0.0f);
+  }
+  float z() const {
+    return GetField<float>(VT_Z, 0.0f);
+  }
+  float qx() const {
+    return GetField<float>(VT_QX, 0.0f);
+  }
+  float qy() const {
+    return GetField<float>(VT_QY, 0.0f);
+  }
+  float qz() const {
+    return GetField<float>(VT_QZ, 0.0f);
+  }
+  float qw() const {
+    return GetField<float>(VT_QW, 0.0f);
+  }
+  bool Verify(::flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<float>(verifier, VT_X, 4) &&
+           VerifyField<float>(verifier, VT_Y, 4) &&
+           VerifyField<float>(verifier, VT_Z, 4) &&
+           VerifyField<float>(verifier, VT_QX, 4) &&
+           VerifyField<float>(verifier, VT_QY, 4) &&
+           VerifyField<float>(verifier, VT_QZ, 4) &&
+           VerifyField<float>(verifier, VT_QW, 4) &&
+           verifier.EndTable();
+  }
+};
+
+struct PoseBuilder {
+  typedef Pose Table;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_x(float x) {
+    fbb_.AddElement<float>(Pose::VT_X, x, 0.0f);
+  }
+  void add_y(float y) {
+    fbb_.AddElement<float>(Pose::VT_Y, y, 0.0f);
+  }
+  void add_z(float z) {
+    fbb_.AddElement<float>(Pose::VT_Z, z, 0.0f);
+  }
+  void add_qx(float qx) {
+    fbb_.AddElement<float>(Pose::VT_QX, qx, 0.0f);
+  }
+  void add_qy(float qy) {
+    fbb_.AddElement<float>(Pose::VT_QY, qy, 0.0f);
+  }
+  void add_qz(float qz) {
+    fbb_.AddElement<float>(Pose::VT_QZ, qz, 0.0f);
+  }
+  void add_qw(float qw) {
+    fbb_.AddElement<float>(Pose::VT_QW, qw, 0.0f);
+  }
+  explicit PoseBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  ::flatbuffers::Offset<Pose> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = ::flatbuffers::Offset<Pose>(end);
+    return o;
+  }
+};
+
+inline ::flatbuffers::Offset<Pose> CreatePose(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    float x = 0.0f,
+    float y = 0.0f,
+    float z = 0.0f,
+    float qx = 0.0f,
+    float qy = 0.0f,
+    float qz = 0.0f,
+    float qw = 0.0f) {
+  PoseBuilder builder_(_fbb);
+  builder_.add_qw(qw);
+  builder_.add_qz(qz);
+  builder_.add_qy(qy);
+  builder_.add_qx(qx);
+  builder_.add_z(z);
+  builder_.add_y(y);
+  builder_.add_x(x);
+  return builder_.Finish();
+}
+
+struct JointState FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef JointStateBuilder Builder;
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_SUB_TYPE = 4,
+    VT_NAMES = 6,
+    VT_POSITIONS = 8,
+    VT_VELOCITIES = 10,
+    VT_EFFORTS = 12,
+    VT_STAMP_SEC = 14,
+    VT_STAMP_NANOSEC = 16,
+    VT_FRAME_ID = 18
+  };
+  udp_communication::JointPoseSubType sub_type() const {
+    return static_cast<udp_communication::JointPoseSubType>(GetField<uint16_t>(VT_SUB_TYPE, 0));
+  }
+  const ::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>> *names() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>> *>(VT_NAMES);
+  }
+  const ::flatbuffers::Vector<float> *positions() const {
+    return GetPointer<const ::flatbuffers::Vector<float> *>(VT_POSITIONS);
+  }
+  const ::flatbuffers::Vector<float> *velocities() const {
+    return GetPointer<const ::flatbuffers::Vector<float> *>(VT_VELOCITIES);
+  }
+  const ::flatbuffers::Vector<float> *efforts() const {
+    return GetPointer<const ::flatbuffers::Vector<float> *>(VT_EFFORTS);
+  }
+  int64_t stamp_sec() const {
+    return GetField<int64_t>(VT_STAMP_SEC, 0);
+  }
+  int64_t stamp_nanosec() const {
+    return GetField<int64_t>(VT_STAMP_NANOSEC, 0);
+  }
+  const ::flatbuffers::String *frame_id() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_FRAME_ID);
+  }
+  bool Verify(::flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<uint16_t>(verifier, VT_SUB_TYPE, 2) &&
+           VerifyOffset(verifier, VT_NAMES) &&
+           verifier.VerifyVector(names()) &&
+           verifier.VerifyVectorOfStrings(names()) &&
+           VerifyOffset(verifier, VT_POSITIONS) &&
+           verifier.VerifyVector(positions()) &&
+           VerifyOffset(verifier, VT_VELOCITIES) &&
+           verifier.VerifyVector(velocities()) &&
+           VerifyOffset(verifier, VT_EFFORTS) &&
+           verifier.VerifyVector(efforts()) &&
+           VerifyField<int64_t>(verifier, VT_STAMP_SEC, 8) &&
+           VerifyField<int64_t>(verifier, VT_STAMP_NANOSEC, 8) &&
+           VerifyOffset(verifier, VT_FRAME_ID) &&
+           verifier.VerifyString(frame_id()) &&
+           verifier.EndTable();
+  }
+};
+
+struct JointStateBuilder {
+  typedef JointState Table;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_sub_type(udp_communication::JointPoseSubType sub_type) {
+    fbb_.AddElement<uint16_t>(JointState::VT_SUB_TYPE, static_cast<uint16_t>(sub_type), 0);
+  }
+  void add_names(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>>> names) {
+    fbb_.AddOffset(JointState::VT_NAMES, names);
+  }
+  void add_positions(::flatbuffers::Offset<::flatbuffers::Vector<float>> positions) {
+    fbb_.AddOffset(JointState::VT_POSITIONS, positions);
+  }
+  void add_velocities(::flatbuffers::Offset<::flatbuffers::Vector<float>> velocities) {
+    fbb_.AddOffset(JointState::VT_VELOCITIES, velocities);
+  }
+  void add_efforts(::flatbuffers::Offset<::flatbuffers::Vector<float>> efforts) {
+    fbb_.AddOffset(JointState::VT_EFFORTS, efforts);
+  }
+  void add_stamp_sec(int64_t stamp_sec) {
+    fbb_.AddElement<int64_t>(JointState::VT_STAMP_SEC, stamp_sec, 0);
+  }
+  void add_stamp_nanosec(int64_t stamp_nanosec) {
+    fbb_.AddElement<int64_t>(JointState::VT_STAMP_NANOSEC, stamp_nanosec, 0);
+  }
+  void add_frame_id(::flatbuffers::Offset<::flatbuffers::String> frame_id) {
+    fbb_.AddOffset(JointState::VT_FRAME_ID, frame_id);
+  }
+  explicit JointStateBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  ::flatbuffers::Offset<JointState> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = ::flatbuffers::Offset<JointState>(end);
+    return o;
+  }
+};
+
+inline ::flatbuffers::Offset<JointState> CreateJointState(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    udp_communication::JointPoseSubType sub_type = udp_communication::JointPoseSubType_UNKNOWN,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>>> names = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<float>> positions = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<float>> velocities = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<float>> efforts = 0,
+    int64_t stamp_sec = 0,
+    int64_t stamp_nanosec = 0,
+    ::flatbuffers::Offset<::flatbuffers::String> frame_id = 0) {
+  JointStateBuilder builder_(_fbb);
+  builder_.add_stamp_nanosec(stamp_nanosec);
+  builder_.add_stamp_sec(stamp_sec);
+  builder_.add_frame_id(frame_id);
+  builder_.add_efforts(efforts);
+  builder_.add_velocities(velocities);
+  builder_.add_positions(positions);
+  builder_.add_names(names);
+  builder_.add_sub_type(sub_type);
+  return builder_.Finish();
+}
+
+inline ::flatbuffers::Offset<JointState> CreateJointStateDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    udp_communication::JointPoseSubType sub_type = udp_communication::JointPoseSubType_UNKNOWN,
+    const std::vector<::flatbuffers::Offset<::flatbuffers::String>> *names = nullptr,
+    const std::vector<float> *positions = nullptr,
+    const std::vector<float> *velocities = nullptr,
+    const std::vector<float> *efforts = nullptr,
+    int64_t stamp_sec = 0,
+    int64_t stamp_nanosec = 0,
+    const char *frame_id = nullptr) {
+  auto names__ = names ? _fbb.CreateVector<::flatbuffers::Offset<::flatbuffers::String>>(*names) : 0;
+  auto positions__ = positions ? _fbb.CreateVector<float>(*positions) : 0;
+  auto velocities__ = velocities ? _fbb.CreateVector<float>(*velocities) : 0;
+  auto efforts__ = efforts ? _fbb.CreateVector<float>(*efforts) : 0;
+  auto frame_id__ = frame_id ? _fbb.CreateString(frame_id) : 0;
+  return udp_communication::CreateJointState(
+      _fbb,
+      sub_type,
+      names__,
+      positions__,
+      velocities__,
+      efforts__,
+      stamp_sec,
+      stamp_nanosec,
+      frame_id__);
+}
+
+struct PoseStamped FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef PoseStampedBuilder Builder;
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_SUB_TYPE = 4,
+    VT_FRAME_ID = 6,
+    VT_STAMP_SEC = 8,
+    VT_STAMP_NANOSEC = 10,
+    VT_POSE = 12
+  };
+  udp_communication::JointPoseSubType sub_type() const {
+    return static_cast<udp_communication::JointPoseSubType>(GetField<uint16_t>(VT_SUB_TYPE, 0));
+  }
+  const ::flatbuffers::String *frame_id() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_FRAME_ID);
+  }
+  int64_t stamp_sec() const {
+    return GetField<int64_t>(VT_STAMP_SEC, 0);
+  }
+  int64_t stamp_nanosec() const {
+    return GetField<int64_t>(VT_STAMP_NANOSEC, 0);
+  }
+  const udp_communication::Pose *pose() const {
+    return GetPointer<const udp_communication::Pose *>(VT_POSE);
+  }
+  bool Verify(::flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<uint16_t>(verifier, VT_SUB_TYPE, 2) &&
+           VerifyOffset(verifier, VT_FRAME_ID) &&
+           verifier.VerifyString(frame_id()) &&
+           VerifyField<int64_t>(verifier, VT_STAMP_SEC, 8) &&
+           VerifyField<int64_t>(verifier, VT_STAMP_NANOSEC, 8) &&
+           VerifyOffset(verifier, VT_POSE) &&
+           verifier.VerifyTable(pose()) &&
+           verifier.EndTable();
+  }
+};
+
+struct PoseStampedBuilder {
+  typedef PoseStamped Table;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_sub_type(udp_communication::JointPoseSubType sub_type) {
+    fbb_.AddElement<uint16_t>(PoseStamped::VT_SUB_TYPE, static_cast<uint16_t>(sub_type), 0);
+  }
+  void add_frame_id(::flatbuffers::Offset<::flatbuffers::String> frame_id) {
+    fbb_.AddOffset(PoseStamped::VT_FRAME_ID, frame_id);
+  }
+  void add_stamp_sec(int64_t stamp_sec) {
+    fbb_.AddElement<int64_t>(PoseStamped::VT_STAMP_SEC, stamp_sec, 0);
+  }
+  void add_stamp_nanosec(int64_t stamp_nanosec) {
+    fbb_.AddElement<int64_t>(PoseStamped::VT_STAMP_NANOSEC, stamp_nanosec, 0);
+  }
+  void add_pose(::flatbuffers::Offset<udp_communication::Pose> pose) {
+    fbb_.AddOffset(PoseStamped::VT_POSE, pose);
+  }
+  explicit PoseStampedBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  ::flatbuffers::Offset<PoseStamped> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = ::flatbuffers::Offset<PoseStamped>(end);
+    return o;
+  }
+};
+
+inline ::flatbuffers::Offset<PoseStamped> CreatePoseStamped(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    udp_communication::JointPoseSubType sub_type = udp_communication::JointPoseSubType_UNKNOWN,
+    ::flatbuffers::Offset<::flatbuffers::String> frame_id = 0,
+    int64_t stamp_sec = 0,
+    int64_t stamp_nanosec = 0,
+    ::flatbuffers::Offset<udp_communication::Pose> pose = 0) {
+  PoseStampedBuilder builder_(_fbb);
+  builder_.add_stamp_nanosec(stamp_nanosec);
+  builder_.add_stamp_sec(stamp_sec);
+  builder_.add_pose(pose);
+  builder_.add_frame_id(frame_id);
+  builder_.add_sub_type(sub_type);
+  return builder_.Finish();
+}
+
+inline ::flatbuffers::Offset<PoseStamped> CreatePoseStampedDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    udp_communication::JointPoseSubType sub_type = udp_communication::JointPoseSubType_UNKNOWN,
+    const char *frame_id = nullptr,
+    int64_t stamp_sec = 0,
+    int64_t stamp_nanosec = 0,
+    ::flatbuffers::Offset<udp_communication::Pose> pose = 0) {
+  auto frame_id__ = frame_id ? _fbb.CreateString(frame_id) : 0;
+  return udp_communication::CreatePoseStamped(
+      _fbb,
+      sub_type,
+      frame_id__,
+      stamp_sec,
+      stamp_nanosec,
+      pose);
 }
 
 struct SensorData FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
@@ -449,6 +862,12 @@ struct Robot2PcWrapper FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   const udp_communication::StatusReport *msg_as_StatusReport() const {
     return msg_type() == udp_communication::Robot2PcMsg_StatusReport ? static_cast<const udp_communication::StatusReport *>(msg()) : nullptr;
   }
+  const udp_communication::JointState *msg_as_JointState() const {
+    return msg_type() == udp_communication::Robot2PcMsg_JointState ? static_cast<const udp_communication::JointState *>(msg()) : nullptr;
+  }
+  const udp_communication::PoseStamped *msg_as_PoseStamped() const {
+    return msg_type() == udp_communication::Robot2PcMsg_PoseStamped ? static_cast<const udp_communication::PoseStamped *>(msg()) : nullptr;
+  }
   bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<uint8_t>(verifier, VT_MSG_TYPE, 1) &&
@@ -464,6 +883,14 @@ template<> inline const udp_communication::SensorData *Robot2PcWrapper::msg_as<u
 
 template<> inline const udp_communication::StatusReport *Robot2PcWrapper::msg_as<udp_communication::StatusReport>() const {
   return msg_as_StatusReport();
+}
+
+template<> inline const udp_communication::JointState *Robot2PcWrapper::msg_as<udp_communication::JointState>() const {
+  return msg_as_JointState();
+}
+
+template<> inline const udp_communication::PoseStamped *Robot2PcWrapper::msg_as<udp_communication::PoseStamped>() const {
+  return msg_as_PoseStamped();
 }
 
 struct Robot2PcWrapperBuilder {
@@ -537,6 +964,14 @@ inline bool VerifyRobot2PcMsg(::flatbuffers::Verifier &verifier, const void *obj
     }
     case Robot2PcMsg_StatusReport: {
       auto ptr = reinterpret_cast<const udp_communication::StatusReport *>(obj);
+      return verifier.VerifyTable(ptr);
+    }
+    case Robot2PcMsg_JointState: {
+      auto ptr = reinterpret_cast<const udp_communication::JointState *>(obj);
+      return verifier.VerifyTable(ptr);
+    }
+    case Robot2PcMsg_PoseStamped: {
+      auto ptr = reinterpret_cast<const udp_communication::PoseStamped *>(obj);
       return verifier.VerifyTable(ptr);
     }
     default: return true;
