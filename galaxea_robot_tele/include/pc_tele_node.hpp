@@ -1,0 +1,44 @@
+#ifndef PC_TELE_NODE_HPP_
+#define PC_TELE_NODE_HPP_
+
+#include "udp_socket.hpp"
+#include "udp_flatbuffer_utils.hpp"
+#include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs/msg/joint_state.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include <atomic>
+#include <memory>
+#include <thread>
+
+namespace galaxea_robot_tele {
+
+class PCTeleNode : public rclcpp::Node {
+public:
+    PCTeleNode();
+    ~PCTeleNode() override;
+
+private:
+    void init_publishers();
+    void recv_loop();
+    // 修复：参数类型添加 robot_msg_fbs:: 命名空间
+    void parse_joint_state(const robot_msg_fbs::JointState* fb_msg, 
+                          rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr publisher);
+    void parse_pose_stamped(const robot_msg_fbs::PoseStamped* fb_msg,
+                          rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher);
+
+    std::unique_ptr<UDPSocket> udp_socket_;
+    UDPConfig udp_config_;
+    std::thread recv_thread_;
+    std::atomic<bool> is_running_;
+
+    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_left_arm_joint_;
+    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_right_arm_joint_;
+    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_left_gripper_joint_;
+    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_right_gripper_joint_;
+    rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_left_arm_pose_;
+    rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_right_arm_pose_;
+};
+
+}  // namespace galaxea_robot_tele
+
+#endif  // PC_TELE_NODE_HPP_

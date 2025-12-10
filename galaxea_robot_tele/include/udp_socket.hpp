@@ -10,11 +10,12 @@
 #include <yaml-cpp/yaml.h>
 #include "rclcpp/rclcpp.hpp"
 
-namespace udp_communication {
+namespace galaxea_robot_tele {
 
 // UDP配置结构体
+// 在 udp_socket.hpp 中
 struct UDPConfig {
-    std::string role;          // robot/pc
+    std::string role;
     // 机器人端配置
     std::string robot_local_ip;
     uint16_t robot_local_port;
@@ -23,7 +24,10 @@ struct UDPConfig {
     // PC端配置
     std::string pc_local_ip;
     uint16_t pc_local_port;
+    // 新增：缓冲区大小
+    size_t buffer_size;  // 添加这一行
 };
+
 
 class UDPSocket {
 public:

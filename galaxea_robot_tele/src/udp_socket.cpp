@@ -9,7 +9,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace udp_communication {
+namespace galaxea_robot_tele {
 
 // 构造函数
 UDPSocket::UDPSocket(const UDPConfig& config) : sock_fd_(-1), config_(config) {
@@ -110,6 +110,8 @@ UDPConfig UDPSocket::load_config(const std::string& config_path) {
         
         // 角色
         config.role = udp_node["role"].as<std::string>();
+        // 新增：加载缓冲区大小
+        config.buffer_size = udp_node["buffer_size"].as<size_t>();  // 添加这一行
         
         // 机器人端配置
         auto robot_node = udp_node["robot"];
@@ -127,5 +129,6 @@ UDPConfig UDPSocket::load_config(const std::string& config_path) {
     }
     return config;
 }
+
 
 }  // namespace udp_communication

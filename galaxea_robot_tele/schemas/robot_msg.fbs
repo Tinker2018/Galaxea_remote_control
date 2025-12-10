@@ -1,4 +1,4 @@
-namespace udp_communication;
+namespace robot_msg_fbs;  // 原 udp_communication → robot_msg_fbs
 
 enum JointPoseSubType: uint16 {
     UNKNOWN = 0,
@@ -82,5 +82,5 @@ table Robot2PcWrapper {
     msg: Robot2PcMsg;
 }
 
-root_type Pc2RobotWrapper;
+// 修正：FlatBuffer 仅支持一个 root_type，优先指定 Robot2PcWrapper（适配机器人→PC通信场景）
 root_type Robot2PcWrapper;
