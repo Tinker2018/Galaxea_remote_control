@@ -54,17 +54,32 @@ void RobotTeleNode::init_subscribers() {
         }
     );
 
-    sub_left_arm_pose_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
+    sub_pose_ee_arm_left_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
         "/motion_control/pose_ee_arm_left", 10,
         [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
-            this->send_pose_stamped(robot_msg_fbs::JointPoseSubType_POSE_STAMPED_LEFT_ARM, *msg);
+            this->send_pose_stamped(robot_msg_fbs::JointPoseSubType_POSE_EE_LEFT_ARM, *msg);
         }
     );
 
-    sub_right_arm_pose_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
+    sub_pose_ee_arm_right_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
         "/motion_control/pose_ee_arm_right", 10,
         [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
-            this->send_pose_stamped(robot_msg_fbs::JointPoseSubType_POSE_STAMPED_RIGHT_ARM, *msg);
+            this->send_pose_stamped(robot_msg_fbs::JointPoseSubType_POSE_EE_RIGHT_ARM, *msg);
+        }
+    );
+
+    sub_robot_target_pose_arm_left_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
+        "/motion_target/target_pose_arm_left", 10,
+        [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
+            this->send_pose_stamped(robot_msg_fbs::JointPoseSubType_TARGET_POSE_ARM_LEFT, *msg);
+        }
+    );
+
+    // 2. 订阅机器人本地右臂目标位姿
+    sub_robot_target_pose_arm_right_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
+        "/motion_target/target_pose_arm_right", 10,
+        [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
+            this->send_pose_stamped(robot_msg_fbs::JointPoseSubType_TARGET_POSE_ARM_RIGHT, *msg);
         }
     );
 

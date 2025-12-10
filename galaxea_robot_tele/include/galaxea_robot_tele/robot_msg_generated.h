@@ -15,12 +15,6 @@ static_assert(FLATBUFFERS_VERSION_MAJOR == 23 &&
 
 namespace robot_msg_fbs {
 
-struct ControlCmd;
-struct ControlCmdBuilder;
-
-struct Heartbeat;
-struct HeartbeatBuilder;
-
 struct Pose;
 struct PoseBuilder;
 
@@ -29,15 +23,6 @@ struct JointStateBuilder;
 
 struct PoseStamped;
 struct PoseStampedBuilder;
-
-struct SensorData;
-struct SensorDataBuilder;
-
-struct StatusReport;
-struct StatusReportBuilder;
-
-struct Pc2RobotWrapper;
-struct Pc2RobotWrapperBuilder;
 
 struct Robot2PcWrapper;
 struct Robot2PcWrapperBuilder;
@@ -48,108 +33,62 @@ enum JointPoseSubType : uint16_t {
   JointPoseSubType_JOINT_STATE_RIGHT_ARM = 2,
   JointPoseSubType_JOINT_STATE_LEFT_GRIPPER = 3,
   JointPoseSubType_JOINT_STATE_RIGHT_GRIPPER = 4,
-  JointPoseSubType_POSE_STAMPED_LEFT_ARM = 5,
-  JointPoseSubType_POSE_STAMPED_RIGHT_ARM = 6,
+  JointPoseSubType_POSE_EE_LEFT_ARM = 5,
+  JointPoseSubType_POSE_EE_RIGHT_ARM = 6,
+  JointPoseSubType_TARGET_POSE_ARM_LEFT = 7,
+  JointPoseSubType_TARGET_POSE_ARM_RIGHT = 8,
   JointPoseSubType_MIN = JointPoseSubType_UNKNOWN,
-  JointPoseSubType_MAX = JointPoseSubType_POSE_STAMPED_RIGHT_ARM
+  JointPoseSubType_MAX = JointPoseSubType_TARGET_POSE_ARM_RIGHT
 };
 
-inline const JointPoseSubType (&EnumValuesJointPoseSubType())[7] {
+inline const JointPoseSubType (&EnumValuesJointPoseSubType())[9] {
   static const JointPoseSubType values[] = {
     JointPoseSubType_UNKNOWN,
     JointPoseSubType_JOINT_STATE_LEFT_ARM,
     JointPoseSubType_JOINT_STATE_RIGHT_ARM,
     JointPoseSubType_JOINT_STATE_LEFT_GRIPPER,
     JointPoseSubType_JOINT_STATE_RIGHT_GRIPPER,
-    JointPoseSubType_POSE_STAMPED_LEFT_ARM,
-    JointPoseSubType_POSE_STAMPED_RIGHT_ARM
+    JointPoseSubType_POSE_EE_LEFT_ARM,
+    JointPoseSubType_POSE_EE_RIGHT_ARM,
+    JointPoseSubType_TARGET_POSE_ARM_LEFT,
+    JointPoseSubType_TARGET_POSE_ARM_RIGHT
   };
   return values;
 }
 
 inline const char * const *EnumNamesJointPoseSubType() {
-  static const char * const names[8] = {
+  static const char * const names[10] = {
     "UNKNOWN",
     "JOINT_STATE_LEFT_ARM",
     "JOINT_STATE_RIGHT_ARM",
     "JOINT_STATE_LEFT_GRIPPER",
     "JOINT_STATE_RIGHT_GRIPPER",
-    "POSE_STAMPED_LEFT_ARM",
-    "POSE_STAMPED_RIGHT_ARM",
+    "POSE_EE_LEFT_ARM",
+    "POSE_EE_RIGHT_ARM",
+    "TARGET_POSE_ARM_LEFT",
+    "TARGET_POSE_ARM_RIGHT",
     nullptr
   };
   return names;
 }
 
 inline const char *EnumNameJointPoseSubType(JointPoseSubType e) {
-  if (::flatbuffers::IsOutRange(e, JointPoseSubType_UNKNOWN, JointPoseSubType_POSE_STAMPED_RIGHT_ARM)) return "";
+  if (::flatbuffers::IsOutRange(e, JointPoseSubType_UNKNOWN, JointPoseSubType_TARGET_POSE_ARM_RIGHT)) return "";
   const size_t index = static_cast<size_t>(e);
   return EnumNamesJointPoseSubType()[index];
 }
 
-enum Pc2RobotMsg : uint8_t {
-  Pc2RobotMsg_NONE = 0,
-  Pc2RobotMsg_ControlCmd = 1,
-  Pc2RobotMsg_Heartbeat = 2,
-  Pc2RobotMsg_MIN = Pc2RobotMsg_NONE,
-  Pc2RobotMsg_MAX = Pc2RobotMsg_Heartbeat
-};
-
-inline const Pc2RobotMsg (&EnumValuesPc2RobotMsg())[3] {
-  static const Pc2RobotMsg values[] = {
-    Pc2RobotMsg_NONE,
-    Pc2RobotMsg_ControlCmd,
-    Pc2RobotMsg_Heartbeat
-  };
-  return values;
-}
-
-inline const char * const *EnumNamesPc2RobotMsg() {
-  static const char * const names[4] = {
-    "NONE",
-    "ControlCmd",
-    "Heartbeat",
-    nullptr
-  };
-  return names;
-}
-
-inline const char *EnumNamePc2RobotMsg(Pc2RobotMsg e) {
-  if (::flatbuffers::IsOutRange(e, Pc2RobotMsg_NONE, Pc2RobotMsg_Heartbeat)) return "";
-  const size_t index = static_cast<size_t>(e);
-  return EnumNamesPc2RobotMsg()[index];
-}
-
-template<typename T> struct Pc2RobotMsgTraits {
-  static const Pc2RobotMsg enum_value = Pc2RobotMsg_NONE;
-};
-
-template<> struct Pc2RobotMsgTraits<robot_msg_fbs::ControlCmd> {
-  static const Pc2RobotMsg enum_value = Pc2RobotMsg_ControlCmd;
-};
-
-template<> struct Pc2RobotMsgTraits<robot_msg_fbs::Heartbeat> {
-  static const Pc2RobotMsg enum_value = Pc2RobotMsg_Heartbeat;
-};
-
-bool VerifyPc2RobotMsg(::flatbuffers::Verifier &verifier, const void *obj, Pc2RobotMsg type);
-bool VerifyPc2RobotMsgVector(::flatbuffers::Verifier &verifier, const ::flatbuffers::Vector<::flatbuffers::Offset<void>> *values, const ::flatbuffers::Vector<uint8_t> *types);
-
 enum Robot2PcMsg : uint8_t {
   Robot2PcMsg_NONE = 0,
-  Robot2PcMsg_SensorData = 1,
-  Robot2PcMsg_StatusReport = 2,
-  Robot2PcMsg_JointState = 3,
-  Robot2PcMsg_PoseStamped = 4,
+  Robot2PcMsg_JointState = 1,
+  Robot2PcMsg_PoseStamped = 2,
   Robot2PcMsg_MIN = Robot2PcMsg_NONE,
   Robot2PcMsg_MAX = Robot2PcMsg_PoseStamped
 };
 
-inline const Robot2PcMsg (&EnumValuesRobot2PcMsg())[5] {
+inline const Robot2PcMsg (&EnumValuesRobot2PcMsg())[3] {
   static const Robot2PcMsg values[] = {
     Robot2PcMsg_NONE,
-    Robot2PcMsg_SensorData,
-    Robot2PcMsg_StatusReport,
     Robot2PcMsg_JointState,
     Robot2PcMsg_PoseStamped
   };
@@ -157,10 +96,8 @@ inline const Robot2PcMsg (&EnumValuesRobot2PcMsg())[5] {
 }
 
 inline const char * const *EnumNamesRobot2PcMsg() {
-  static const char * const names[6] = {
+  static const char * const names[4] = {
     "NONE",
-    "SensorData",
-    "StatusReport",
     "JointState",
     "PoseStamped",
     nullptr
@@ -178,14 +115,6 @@ template<typename T> struct Robot2PcMsgTraits {
   static const Robot2PcMsg enum_value = Robot2PcMsg_NONE;
 };
 
-template<> struct Robot2PcMsgTraits<robot_msg_fbs::SensorData> {
-  static const Robot2PcMsg enum_value = Robot2PcMsg_SensorData;
-};
-
-template<> struct Robot2PcMsgTraits<robot_msg_fbs::StatusReport> {
-  static const Robot2PcMsg enum_value = Robot2PcMsg_StatusReport;
-};
-
 template<> struct Robot2PcMsgTraits<robot_msg_fbs::JointState> {
   static const Robot2PcMsg enum_value = Robot2PcMsg_JointState;
 };
@@ -196,118 +125,6 @@ template<> struct Robot2PcMsgTraits<robot_msg_fbs::PoseStamped> {
 
 bool VerifyRobot2PcMsg(::flatbuffers::Verifier &verifier, const void *obj, Robot2PcMsg type);
 bool VerifyRobot2PcMsgVector(::flatbuffers::Verifier &verifier, const ::flatbuffers::Vector<::flatbuffers::Offset<void>> *values, const ::flatbuffers::Vector<uint8_t> *types);
-
-struct ControlCmd FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
-  typedef ControlCmdBuilder Builder;
-  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
-    VT_LINEAR_VEL = 4,
-    VT_ANGULAR_VEL = 6,
-    VT_MODE = 8
-  };
-  float linear_vel() const {
-    return GetField<float>(VT_LINEAR_VEL, 0.0f);
-  }
-  float angular_vel() const {
-    return GetField<float>(VT_ANGULAR_VEL, 0.0f);
-  }
-  int32_t mode() const {
-    return GetField<int32_t>(VT_MODE, 0);
-  }
-  bool Verify(::flatbuffers::Verifier &verifier) const {
-    return VerifyTableStart(verifier) &&
-           VerifyField<float>(verifier, VT_LINEAR_VEL, 4) &&
-           VerifyField<float>(verifier, VT_ANGULAR_VEL, 4) &&
-           VerifyField<int32_t>(verifier, VT_MODE, 4) &&
-           verifier.EndTable();
-  }
-};
-
-struct ControlCmdBuilder {
-  typedef ControlCmd Table;
-  ::flatbuffers::FlatBufferBuilder &fbb_;
-  ::flatbuffers::uoffset_t start_;
-  void add_linear_vel(float linear_vel) {
-    fbb_.AddElement<float>(ControlCmd::VT_LINEAR_VEL, linear_vel, 0.0f);
-  }
-  void add_angular_vel(float angular_vel) {
-    fbb_.AddElement<float>(ControlCmd::VT_ANGULAR_VEL, angular_vel, 0.0f);
-  }
-  void add_mode(int32_t mode) {
-    fbb_.AddElement<int32_t>(ControlCmd::VT_MODE, mode, 0);
-  }
-  explicit ControlCmdBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
-        : fbb_(_fbb) {
-    start_ = fbb_.StartTable();
-  }
-  ::flatbuffers::Offset<ControlCmd> Finish() {
-    const auto end = fbb_.EndTable(start_);
-    auto o = ::flatbuffers::Offset<ControlCmd>(end);
-    return o;
-  }
-};
-
-inline ::flatbuffers::Offset<ControlCmd> CreateControlCmd(
-    ::flatbuffers::FlatBufferBuilder &_fbb,
-    float linear_vel = 0.0f,
-    float angular_vel = 0.0f,
-    int32_t mode = 0) {
-  ControlCmdBuilder builder_(_fbb);
-  builder_.add_mode(mode);
-  builder_.add_angular_vel(angular_vel);
-  builder_.add_linear_vel(linear_vel);
-  return builder_.Finish();
-}
-
-struct Heartbeat FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
-  typedef HeartbeatBuilder Builder;
-  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
-    VT_TIMESTAMP = 4,
-    VT_PC_STATUS = 6
-  };
-  int64_t timestamp() const {
-    return GetField<int64_t>(VT_TIMESTAMP, 0);
-  }
-  bool pc_status() const {
-    return GetField<uint8_t>(VT_PC_STATUS, 0) != 0;
-  }
-  bool Verify(::flatbuffers::Verifier &verifier) const {
-    return VerifyTableStart(verifier) &&
-           VerifyField<int64_t>(verifier, VT_TIMESTAMP, 8) &&
-           VerifyField<uint8_t>(verifier, VT_PC_STATUS, 1) &&
-           verifier.EndTable();
-  }
-};
-
-struct HeartbeatBuilder {
-  typedef Heartbeat Table;
-  ::flatbuffers::FlatBufferBuilder &fbb_;
-  ::flatbuffers::uoffset_t start_;
-  void add_timestamp(int64_t timestamp) {
-    fbb_.AddElement<int64_t>(Heartbeat::VT_TIMESTAMP, timestamp, 0);
-  }
-  void add_pc_status(bool pc_status) {
-    fbb_.AddElement<uint8_t>(Heartbeat::VT_PC_STATUS, static_cast<uint8_t>(pc_status), 0);
-  }
-  explicit HeartbeatBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
-        : fbb_(_fbb) {
-    start_ = fbb_.StartTable();
-  }
-  ::flatbuffers::Offset<Heartbeat> Finish() {
-    const auto end = fbb_.EndTable(start_);
-    auto o = ::flatbuffers::Offset<Heartbeat>(end);
-    return o;
-  }
-};
-
-inline ::flatbuffers::Offset<Heartbeat> CreateHeartbeat(
-    ::flatbuffers::FlatBufferBuilder &_fbb,
-    int64_t timestamp = 0,
-    bool pc_status = false) {
-  HeartbeatBuilder builder_(_fbb);
-  builder_.add_timestamp(timestamp);
-  builder_.add_pc_status(pc_status);
-  return builder_.Finish();
-}
 
 struct Pose FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef PoseBuilder Builder;
@@ -654,195 +471,6 @@ inline ::flatbuffers::Offset<PoseStamped> CreatePoseStampedDirect(
       pose);
 }
 
-struct SensorData FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
-  typedef SensorDataBuilder Builder;
-  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
-    VT_TEMPERATURE = 4,
-    VT_DISTANCE = 6,
-    VT_TIMESTAMP = 8
-  };
-  float temperature() const {
-    return GetField<float>(VT_TEMPERATURE, 0.0f);
-  }
-  float distance() const {
-    return GetField<float>(VT_DISTANCE, 0.0f);
-  }
-  int64_t timestamp() const {
-    return GetField<int64_t>(VT_TIMESTAMP, 0);
-  }
-  bool Verify(::flatbuffers::Verifier &verifier) const {
-    return VerifyTableStart(verifier) &&
-           VerifyField<float>(verifier, VT_TEMPERATURE, 4) &&
-           VerifyField<float>(verifier, VT_DISTANCE, 4) &&
-           VerifyField<int64_t>(verifier, VT_TIMESTAMP, 8) &&
-           verifier.EndTable();
-  }
-};
-
-struct SensorDataBuilder {
-  typedef SensorData Table;
-  ::flatbuffers::FlatBufferBuilder &fbb_;
-  ::flatbuffers::uoffset_t start_;
-  void add_temperature(float temperature) {
-    fbb_.AddElement<float>(SensorData::VT_TEMPERATURE, temperature, 0.0f);
-  }
-  void add_distance(float distance) {
-    fbb_.AddElement<float>(SensorData::VT_DISTANCE, distance, 0.0f);
-  }
-  void add_timestamp(int64_t timestamp) {
-    fbb_.AddElement<int64_t>(SensorData::VT_TIMESTAMP, timestamp, 0);
-  }
-  explicit SensorDataBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
-        : fbb_(_fbb) {
-    start_ = fbb_.StartTable();
-  }
-  ::flatbuffers::Offset<SensorData> Finish() {
-    const auto end = fbb_.EndTable(start_);
-    auto o = ::flatbuffers::Offset<SensorData>(end);
-    return o;
-  }
-};
-
-inline ::flatbuffers::Offset<SensorData> CreateSensorData(
-    ::flatbuffers::FlatBufferBuilder &_fbb,
-    float temperature = 0.0f,
-    float distance = 0.0f,
-    int64_t timestamp = 0) {
-  SensorDataBuilder builder_(_fbb);
-  builder_.add_timestamp(timestamp);
-  builder_.add_distance(distance);
-  builder_.add_temperature(temperature);
-  return builder_.Finish();
-}
-
-struct StatusReport FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
-  typedef StatusReportBuilder Builder;
-  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
-    VT_BATTERY = 4,
-    VT_ERROR_CODE = 6,
-    VT_TIMESTAMP = 8
-  };
-  float battery() const {
-    return GetField<float>(VT_BATTERY, 0.0f);
-  }
-  int32_t error_code() const {
-    return GetField<int32_t>(VT_ERROR_CODE, 0);
-  }
-  int64_t timestamp() const {
-    return GetField<int64_t>(VT_TIMESTAMP, 0);
-  }
-  bool Verify(::flatbuffers::Verifier &verifier) const {
-    return VerifyTableStart(verifier) &&
-           VerifyField<float>(verifier, VT_BATTERY, 4) &&
-           VerifyField<int32_t>(verifier, VT_ERROR_CODE, 4) &&
-           VerifyField<int64_t>(verifier, VT_TIMESTAMP, 8) &&
-           verifier.EndTable();
-  }
-};
-
-struct StatusReportBuilder {
-  typedef StatusReport Table;
-  ::flatbuffers::FlatBufferBuilder &fbb_;
-  ::flatbuffers::uoffset_t start_;
-  void add_battery(float battery) {
-    fbb_.AddElement<float>(StatusReport::VT_BATTERY, battery, 0.0f);
-  }
-  void add_error_code(int32_t error_code) {
-    fbb_.AddElement<int32_t>(StatusReport::VT_ERROR_CODE, error_code, 0);
-  }
-  void add_timestamp(int64_t timestamp) {
-    fbb_.AddElement<int64_t>(StatusReport::VT_TIMESTAMP, timestamp, 0);
-  }
-  explicit StatusReportBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
-        : fbb_(_fbb) {
-    start_ = fbb_.StartTable();
-  }
-  ::flatbuffers::Offset<StatusReport> Finish() {
-    const auto end = fbb_.EndTable(start_);
-    auto o = ::flatbuffers::Offset<StatusReport>(end);
-    return o;
-  }
-};
-
-inline ::flatbuffers::Offset<StatusReport> CreateStatusReport(
-    ::flatbuffers::FlatBufferBuilder &_fbb,
-    float battery = 0.0f,
-    int32_t error_code = 0,
-    int64_t timestamp = 0) {
-  StatusReportBuilder builder_(_fbb);
-  builder_.add_timestamp(timestamp);
-  builder_.add_error_code(error_code);
-  builder_.add_battery(battery);
-  return builder_.Finish();
-}
-
-struct Pc2RobotWrapper FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
-  typedef Pc2RobotWrapperBuilder Builder;
-  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
-    VT_MSG_TYPE = 4,
-    VT_MSG = 6
-  };
-  robot_msg_fbs::Pc2RobotMsg msg_type() const {
-    return static_cast<robot_msg_fbs::Pc2RobotMsg>(GetField<uint8_t>(VT_MSG_TYPE, 0));
-  }
-  const void *msg() const {
-    return GetPointer<const void *>(VT_MSG);
-  }
-  template<typename T> const T *msg_as() const;
-  const robot_msg_fbs::ControlCmd *msg_as_ControlCmd() const {
-    return msg_type() == robot_msg_fbs::Pc2RobotMsg_ControlCmd ? static_cast<const robot_msg_fbs::ControlCmd *>(msg()) : nullptr;
-  }
-  const robot_msg_fbs::Heartbeat *msg_as_Heartbeat() const {
-    return msg_type() == robot_msg_fbs::Pc2RobotMsg_Heartbeat ? static_cast<const robot_msg_fbs::Heartbeat *>(msg()) : nullptr;
-  }
-  bool Verify(::flatbuffers::Verifier &verifier) const {
-    return VerifyTableStart(verifier) &&
-           VerifyField<uint8_t>(verifier, VT_MSG_TYPE, 1) &&
-           VerifyOffset(verifier, VT_MSG) &&
-           VerifyPc2RobotMsg(verifier, msg(), msg_type()) &&
-           verifier.EndTable();
-  }
-};
-
-template<> inline const robot_msg_fbs::ControlCmd *Pc2RobotWrapper::msg_as<robot_msg_fbs::ControlCmd>() const {
-  return msg_as_ControlCmd();
-}
-
-template<> inline const robot_msg_fbs::Heartbeat *Pc2RobotWrapper::msg_as<robot_msg_fbs::Heartbeat>() const {
-  return msg_as_Heartbeat();
-}
-
-struct Pc2RobotWrapperBuilder {
-  typedef Pc2RobotWrapper Table;
-  ::flatbuffers::FlatBufferBuilder &fbb_;
-  ::flatbuffers::uoffset_t start_;
-  void add_msg_type(robot_msg_fbs::Pc2RobotMsg msg_type) {
-    fbb_.AddElement<uint8_t>(Pc2RobotWrapper::VT_MSG_TYPE, static_cast<uint8_t>(msg_type), 0);
-  }
-  void add_msg(::flatbuffers::Offset<void> msg) {
-    fbb_.AddOffset(Pc2RobotWrapper::VT_MSG, msg);
-  }
-  explicit Pc2RobotWrapperBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
-        : fbb_(_fbb) {
-    start_ = fbb_.StartTable();
-  }
-  ::flatbuffers::Offset<Pc2RobotWrapper> Finish() {
-    const auto end = fbb_.EndTable(start_);
-    auto o = ::flatbuffers::Offset<Pc2RobotWrapper>(end);
-    return o;
-  }
-};
-
-inline ::flatbuffers::Offset<Pc2RobotWrapper> CreatePc2RobotWrapper(
-    ::flatbuffers::FlatBufferBuilder &_fbb,
-    robot_msg_fbs::Pc2RobotMsg msg_type = robot_msg_fbs::Pc2RobotMsg_NONE,
-    ::flatbuffers::Offset<void> msg = 0) {
-  Pc2RobotWrapperBuilder builder_(_fbb);
-  builder_.add_msg(msg);
-  builder_.add_msg_type(msg_type);
-  return builder_.Finish();
-}
-
 struct Robot2PcWrapper FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef Robot2PcWrapperBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
@@ -856,12 +484,6 @@ struct Robot2PcWrapper FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
     return GetPointer<const void *>(VT_MSG);
   }
   template<typename T> const T *msg_as() const;
-  const robot_msg_fbs::SensorData *msg_as_SensorData() const {
-    return msg_type() == robot_msg_fbs::Robot2PcMsg_SensorData ? static_cast<const robot_msg_fbs::SensorData *>(msg()) : nullptr;
-  }
-  const robot_msg_fbs::StatusReport *msg_as_StatusReport() const {
-    return msg_type() == robot_msg_fbs::Robot2PcMsg_StatusReport ? static_cast<const robot_msg_fbs::StatusReport *>(msg()) : nullptr;
-  }
   const robot_msg_fbs::JointState *msg_as_JointState() const {
     return msg_type() == robot_msg_fbs::Robot2PcMsg_JointState ? static_cast<const robot_msg_fbs::JointState *>(msg()) : nullptr;
   }
@@ -876,14 +498,6 @@ struct Robot2PcWrapper FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
            verifier.EndTable();
   }
 };
-
-template<> inline const robot_msg_fbs::SensorData *Robot2PcWrapper::msg_as<robot_msg_fbs::SensorData>() const {
-  return msg_as_SensorData();
-}
-
-template<> inline const robot_msg_fbs::StatusReport *Robot2PcWrapper::msg_as<robot_msg_fbs::StatusReport>() const {
-  return msg_as_StatusReport();
-}
 
 template<> inline const robot_msg_fbs::JointState *Robot2PcWrapper::msg_as<robot_msg_fbs::JointState>() const {
   return msg_as_JointState();
@@ -924,47 +538,10 @@ inline ::flatbuffers::Offset<Robot2PcWrapper> CreateRobot2PcWrapper(
   return builder_.Finish();
 }
 
-inline bool VerifyPc2RobotMsg(::flatbuffers::Verifier &verifier, const void *obj, Pc2RobotMsg type) {
-  switch (type) {
-    case Pc2RobotMsg_NONE: {
-      return true;
-    }
-    case Pc2RobotMsg_ControlCmd: {
-      auto ptr = reinterpret_cast<const robot_msg_fbs::ControlCmd *>(obj);
-      return verifier.VerifyTable(ptr);
-    }
-    case Pc2RobotMsg_Heartbeat: {
-      auto ptr = reinterpret_cast<const robot_msg_fbs::Heartbeat *>(obj);
-      return verifier.VerifyTable(ptr);
-    }
-    default: return true;
-  }
-}
-
-inline bool VerifyPc2RobotMsgVector(::flatbuffers::Verifier &verifier, const ::flatbuffers::Vector<::flatbuffers::Offset<void>> *values, const ::flatbuffers::Vector<uint8_t> *types) {
-  if (!values || !types) return !values && !types;
-  if (values->size() != types->size()) return false;
-  for (::flatbuffers::uoffset_t i = 0; i < values->size(); ++i) {
-    if (!VerifyPc2RobotMsg(
-        verifier,  values->Get(i), types->GetEnum<Pc2RobotMsg>(i))) {
-      return false;
-    }
-  }
-  return true;
-}
-
 inline bool VerifyRobot2PcMsg(::flatbuffers::Verifier &verifier, const void *obj, Robot2PcMsg type) {
   switch (type) {
     case Robot2PcMsg_NONE: {
       return true;
-    }
-    case Robot2PcMsg_SensorData: {
-      auto ptr = reinterpret_cast<const robot_msg_fbs::SensorData *>(obj);
-      return verifier.VerifyTable(ptr);
-    }
-    case Robot2PcMsg_StatusReport: {
-      auto ptr = reinterpret_cast<const robot_msg_fbs::StatusReport *>(obj);
-      return verifier.VerifyTable(ptr);
     }
     case Robot2PcMsg_JointState: {
       auto ptr = reinterpret_cast<const robot_msg_fbs::JointState *>(obj);

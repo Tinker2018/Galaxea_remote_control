@@ -6,24 +6,10 @@ enum JointPoseSubType: uint16 {
     JOINT_STATE_RIGHT_ARM = 2,
     JOINT_STATE_LEFT_GRIPPER = 3,
     JOINT_STATE_RIGHT_GRIPPER = 4,
-    POSE_STAMPED_LEFT_ARM = 5,
-    POSE_STAMPED_RIGHT_ARM = 6
-}
-
-table ControlCmd {
-    linear_vel: float;
-    angular_vel: float;
-    mode: int;
-}
-
-table Heartbeat {
-    timestamp: int64;
-    pc_status: bool;
-}
-
-union Pc2RobotMsg {
-    ControlCmd,
-    Heartbeat
+    POSE_EE_LEFT_ARM = 5,
+    POSE_EE_RIGHT_ARM = 6,
+    TARGET_POSE_ARM_LEFT = 7,
+    TARGET_POSE_ARM_RIGHT = 8
 }
 
 table Pose {
@@ -55,32 +41,15 @@ table PoseStamped {
     pose: Pose;
 }
 
-table SensorData {
-    temperature: float;
-    distance: float;
-    timestamp: int64;
-}
-
-table StatusReport {
-    battery: float;
-    error_code: int;
-    timestamp: int64;
-}
 
 union Robot2PcMsg {
-    SensorData,
-    StatusReport,
     JointState,
     PoseStamped
 }
 
-table Pc2RobotWrapper {
-    msg: Pc2RobotMsg;
-}
 
 table Robot2PcWrapper {
     msg: Robot2PcMsg;
 }
 
-// 修正：FlatBuffer 仅支持一个 root_type，优先指定 Robot2PcWrapper（适配机器人→PC通信场景）
 root_type Robot2PcWrapper;
