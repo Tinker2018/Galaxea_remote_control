@@ -86,6 +86,10 @@ RobotTeleNode::RobotTeleNode() : Node("robot_tele_node"), is_running_(true)  {
     pub_target_position_gripper_right_ = this->create_publisher<sensor_msgs::msg::JointState>("/motion_target/target_position_gripper_right", 10);
     pub_target_pose_arm_left_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_target/target_pose_arm_left", 10);
     pub_target_pose_arm_right_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_target/target_pose_arm_right", 10);
+    pub_target_speed_chassis_ = this->create_publisher<geometry_msgs::msg::TwistStamped>("/motion_control/control_speed_chassis", 10);
+    pub_target_speed_torso_ = this->create_publisher<geometry_msgs::msg::TwistStamped>("/motion_control/control_speed_torso", 10);
+    pub_control_arm_left_ = this->create_publisher<hdas_msg::msg::MotorControl>("/motion_control/control_arm_left", 10);
+    pub_control_arm_right_ = this->create_publisher<hdas_msg::msg::MotorControl>("/motion_control/control_arm_right", 10);
 
     RCLCPP_INFO(this->get_logger(), "Robot initialized");
     recv_thread_ = std::thread(&RobotTeleNode::recv_loop, this);
@@ -116,49 +120,81 @@ void RobotTeleNode::recv_loop() {
             continue;
         }
 
-        switch (wrapper->msg_type()) {
-            case robot_msg_fbs::Robot2PcMsg_JointState: {
-                auto js = wrapper->msg_as_JointState();
-                if (!js) break;
+switch (wrapper->msg_type()) {
+    case robot_msg_fbs::Robot2PcMsg_JointState: {
+        auto js = wrapper->msg_as_JointState();
+        if (!js) break;
 
-                switch (js->msg_type()) {
-                    case robot_msg_fbs::RobotMsgType_TARGET_JOINT_STATE_ARM_LEFT:
-                        parse_joint_state(js, pub_target_joint_state_arm_left_);
-                        break;
-                    case robot_msg_fbs::RobotMsgType_TARGET_JOINT_STATE_ARM_RIGHT:
-                        parse_joint_state(js, pub_target_joint_state_arm_right_);
-                        break;
-                    case robot_msg_fbs::RobotMsgType_TARGET_POSITION_GRIPPER_LEFT:
-                        parse_joint_state(js, pub_target_position_gripper_left_);
-                        break;
-                    case robot_msg_fbs::RobotMsgType_TARGET_POSITION_GRIPPER_RIGHT:
-                        parse_joint_state(js, pub_target_position_gripper_right_);
-                        break;
-                    default:
-                        RCLCPP_WARN(this->get_logger(), "Unknown joint state type: %d", js->msg_type());
-                }
+        switch (js->msg_type()) {
+            case robot_msg_fbs::RobotMsgType_TARGET_JOINT_STATE_ARM_LEFT:
+                parse_joint_state(js, pub_target_joint_state_arm_left_);
                 break;
-            }
-            case robot_msg_fbs::Robot2PcMsg_PoseStamped: {
-                auto ps = wrapper->msg_as_PoseStamped();
-                if (!ps) break;
-                
-                // 修复：枚举值添加 RobotMsgType:: 嵌套
-                switch (ps->msg_type()) {
-                    case robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_LEFT: // 7
-                        parse_pose_stamped(ps, pub_target_pose_arm_left_);
-                        break;
-                    case robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_RIGHT: // 8
-                        parse_pose_stamped(ps, pub_target_pose_arm_right_);
-                        break;
-                    default:
-                        RCLCPP_WARN(this->get_logger(), "Unknown pose stamped type: %d", ps->msg_type());
-                }
+            case robot_msg_fbs::RobotMsgType_TARGET_JOINT_STATE_ARM_RIGHT:
+                parse_joint_state(js, pub_target_joint_state_arm_right_);
                 break;
-            }
+            case robot_msg_fbs::RobotMsgType_TARGET_POSITION_GRIPPER_LEFT:
+                parse_joint_state(js, pub_target_position_gripper_left_);
+                break;
+            case robot_msg_fbs::RobotMsgType_TARGET_POSITION_GRIPPER_RIGHT:
+                parse_joint_state(js, pub_target_position_gripper_right_);
+                break;
             default:
-                RCLCPP_WARN(this->get_logger(), "Unknown message type: %d", wrapper->msg_type());
+                RCLCPP_WARN(this->get_logger(), "Unknown joint state type: %d", js->msg_type());
         }
+        break;
+    }
+    case robot_msg_fbs::Robot2PcMsg_PoseStamped: {
+        auto ps = wrapper->msg_as_PoseStamped();
+        if (!ps) break;
+        
+        switch (ps->msg_type()) {
+            case robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_LEFT: // 7
+                parse_pose_stamped(ps, pub_target_pose_arm_left_);
+                break;
+            case robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_RIGHT: // 8
+                parse_pose_stamped(ps, pub_target_pose_arm_right_);
+                break;
+            default:
+                RCLCPP_WARN(this->get_logger(), "Unknown pose stamped type: %d", ps->msg_type());
+        }
+        break;
+    }
+    case robot_msg_fbs::Robot2PcMsg_TwistStamped: {
+        auto ts = wrapper->msg_as_TwistStamped();
+        if (!ts) break;
+
+        switch (ts->msg_type()) {
+            case robot_msg_fbs::RobotMsgType_TARGET_SPEED_CHASSIS: // 13
+                parse_twist_stamped(ts, pub_target_speed_chassis_);
+                break;
+            case robot_msg_fbs::RobotMsgType_TARGET_SPEED_TORSO: // 14
+                parse_twist_stamped(ts, pub_target_speed_torso_);
+                break;
+            default:
+                RCLCPP_WARN(this->get_logger(), "Unknown twist stamped type: %d", ts->msg_type());
+        }
+        break;
+    }
+    case robot_msg_fbs::Robot2PcMsg_MotorControl: {
+        auto mc = wrapper->msg_as_MotorControl();
+        if (!mc) break;
+
+        switch (mc->msg_type()) {
+            case robot_msg_fbs::RobotMsgType_CONTROL_ARM_LEFT: // 15
+                parse_motor_control(mc, pub_control_arm_left_);
+                break;
+            case robot_msg_fbs::RobotMsgType_CONTROL_ARM_RIGHT: // 16
+                parse_motor_control(mc, pub_control_arm_right_);
+                break;
+            default:
+                RCLCPP_WARN(this->get_logger(), "Unknown motor control type: %d", mc->msg_type());
+        }
+        break;
+    }
+    default:
+        RCLCPP_WARN(this->get_logger(), "Unknown message type: %d", wrapper->msg_type());
+}
+
     }
 }
 
@@ -175,6 +211,21 @@ void RobotTeleNode::parse_pose_stamped(const robot_msg_fbs::PoseStamped* fb_msg,
                                   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher) {
     geometry_msgs::msg::PoseStamped ros_msg;
     FlatbufferUtils::decode_pose_stamped(fb_msg, ros_msg);
+    publisher->publish(ros_msg);
+}
+
+void RobotTeleNode::parse_twist_stamped(const robot_msg_fbs::TwistStamped* fb_msg,
+                           rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr publisher) {
+    geometry_msgs::msg::TwistStamped ros_msg;
+    FlatbufferUtils::decode_twist_stamped(fb_msg, ros_msg);
+    publisher->publish(ros_msg);
+}
+
+
+void RobotTeleNode::parse_motor_control(const robot_msg_fbs::MotorControl* fb_msg,
+                           rclcpp::Publisher<hdas_msg::msg::MotorControl>::SharedPtr publisher) {
+    hdas_msg::msg::MotorControl ros_msg;
+    FlatbufferUtils::decode_motor_control(fb_msg, ros_msg);
     publisher->publish(ros_msg);
 }
 

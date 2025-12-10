@@ -11,7 +11,7 @@ PCTeleNode::PCTeleNode() : Node("pc_tele_node"), is_running_(true) {
         if (udp_config_.role != "pc") {
             throw std::runtime_error("Config role is not 'pc'");
         }
-        udp_socket_ = std::make_unique<UDPSocket>(udp_config_);
+        udp_socket_ = std::make_unique<UDPSocket>(udp_config_);    // 订阅底盘速度指令 → 转发到ROBOT（对应枚举 TARGET_SPEED_CHASSIS=13）
         RCLCPP_INFO(this->get_logger(), "PC UDP initialized successfully");
     } catch (const std::exception& e) {
         RCLCPP_FATAL(this->get_logger(), "Initialization failed: %s", e.what());
@@ -65,6 +65,38 @@ PCTeleNode::PCTeleNode() : Node("pc_tele_node"), is_running_(true) {
             this->send_pose_stamped(robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_RIGHT, *msg);
         },
         sub_options
+    );
+
+    sub_target_speed_chassis_ = this->create_subscription<geometry_msgs::msg::TwistStamped>(
+        "/motion_control/control_speed_chassis",
+        10,
+        [this](const geometry_msgs::msg::TwistStamped::SharedPtr msg) {
+            this->send_twist_stamped(robot_msg_fbs::RobotMsgType_TARGET_SPEED_CHASSIS, *msg);
+        }
+    );
+
+    sub_target_speed_torso_ = this->create_subscription<geometry_msgs::msg::TwistStamped>(
+        "/motion_control/control_speed_torso",
+        10,
+        [this](const geometry_msgs::msg::TwistStamped::SharedPtr msg) {
+            this->send_twist_stamped(robot_msg_fbs::RobotMsgType_TARGET_SPEED_TORSO, *msg);
+        }
+    );
+
+    sub_control_arm_left_ = this->create_subscription<hdas_msg::msg::MotorControl>(
+        "/motion_control/control_arm_left",
+        10,
+        [this](const hdas_msg::msg::MotorControl::SharedPtr msg) {
+            this->send_motor_control(robot_msg_fbs::RobotMsgType_CONTROL_ARM_LEFT, *msg);
+        }
+    );
+
+    sub_control_arm_right_ = this->create_subscription<hdas_msg::msg::MotorControl>(
+        "/motion_control/control_arm_right",
+        10,
+        [this](const hdas_msg::msg::MotorControl::SharedPtr msg) {
+            this->send_motor_control(robot_msg_fbs::RobotMsgType_CONTROL_ARM_RIGHT, *msg);
+        }
     );
 
     pub_left_arm_joint_ = this->create_publisher<sensor_msgs::msg::JointState>("/hdas/feedback_arm_left", 10);
@@ -135,7 +167,6 @@ void PCTeleNode::recv_loop() {
                 auto ps = wrapper->msg_as_PoseStamped();
                 if (!ps) break;
                 
-                // 修复：枚举值添加 RobotMsgType:: 嵌套
                 switch (ps->msg_type()) {
                     case robot_msg_fbs::RobotMsgType_POSE_EE_LEFT_ARM: // 5
                         parse_pose_stamped(ps, pub_pose_ee_arm_left_);
@@ -197,6 +228,32 @@ void PCTeleNode::send_pose_stamped(robot_msg_fbs::RobotMsgType msg_type, const g
         RCLCPP_WARN(this->get_logger(), "Pose stamped send failed (type: %d)", msg_type);
     }
 }
+
+void PCTeleNode::send_twist_stamped(robot_msg_fbs::RobotMsgType msg_type, const geometry_msgs::msg::TwistStamped& msg) {
+    flatbuffers::FlatBufferBuilder builder(1024);
+    auto wrapper = FlatbufferUtils::encode_twist_stamped(builder, msg_type, msg);
+    robot_msg_fbs::FinishRobot2PcWrapperBuffer(builder, wrapper);
+
+    if (udp_socket_->send(builder.GetBufferPointer(), builder.GetSize())) {
+        RCLCPP_DEBUG(this->get_logger(), "Twist stamped sent (type: %d)", msg_type);
+    } else {
+        RCLCPP_WARN(this->get_logger(), "Twist stamped send failed (type: %d)", msg_type);
+    }
+}
+
+void PCTeleNode::send_motor_control(robot_msg_fbs::RobotMsgType msg_type, const hdas_msg::msg::MotorControl& msg) {
+    flatbuffers::FlatBufferBuilder builder(1024);
+    auto wrapper = FlatbufferUtils::encode_motor_control(builder, msg_type, msg);
+    robot_msg_fbs::FinishRobot2PcWrapperBuffer(builder, wrapper);
+
+    if (udp_socket_->send(builder.GetBufferPointer(), builder.GetSize())) {
+        RCLCPP_DEBUG(this->get_logger(), "Motor control sent (type: %d)", msg_type);
+    } else {
+        RCLCPP_WARN(this->get_logger(), "Motor control send failed (type: %d)", msg_type);
+    }
+}
+
+
 
 
 

@@ -22,24 +22,37 @@ private:
     
     void send_joint_state(robot_msg_fbs::RobotMsgType msg_type, const sensor_msgs::msg::JointState& msg);
     void send_pose_stamped(robot_msg_fbs::RobotMsgType msg_type, const geometry_msgs::msg::PoseStamped& msg);
-    
+
+    // void send_twist_stamped(robot_msg_fbs::RobotMsgType msg_type, const geometry_msgs::msg::TwistStamped& msg);
+    // void send_motor_control(robot_msg_fbs::RobotMsgType msg_type, const hdas_msg::msg::MotorControl& msg);
+
     void parse_joint_state(const robot_msg_fbs::JointState* fb_msg, 
                           rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr publisher);
     void parse_pose_stamped(const robot_msg_fbs::PoseStamped* fb_msg,
                           rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher);
+    void parse_twist_stamped(const robot_msg_fbs::TwistStamped* fb_msg,
+                           rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr publisher);
+    void parse_motor_control(const robot_msg_fbs::MotorControl* fb_msg,
+                           rclcpp::Publisher<hdas_msg::msg::MotorControl>::SharedPtr publisher);
 
     std::unique_ptr<UDPSocket> udp_socket_;
     UDPConfig udp_config_;
     std::thread recv_thread_;
     std::atomic<bool> is_running_;
-       
+    
+    //PC到ROBOT的消息
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_target_joint_state_arm_left_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_target_joint_state_arm_right_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_target_position_gripper_left_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_target_position_gripper_right_;
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_target_pose_arm_left_;
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_target_pose_arm_right_;
+    rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr pub_target_speed_chassis_;
+    rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr pub_target_speed_torso_;
+    rclcpp::Publisher<hdas_msg::msg::MotorControl>::SharedPtr pub_control_arm_left_;
+    rclcpp::Publisher<hdas_msg::msg::MotorControl>::SharedPtr pub_control_arm_right_;
 
+    //ROBOT到PC的消息
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_feedback_arm_left_;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_feedback_arm_right_;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_feedback_gripper_left_;

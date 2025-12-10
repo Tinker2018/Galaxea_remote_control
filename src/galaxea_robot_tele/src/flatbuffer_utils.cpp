@@ -127,7 +127,6 @@ void FlatbufferUtils::decode_header(
     ros_header.frame_id = fb_header->frame_id()->str();
 }
 
-// ===================== 新增：TwistStamped 编解码 =====================
 flatbuffers::Offset<robot_msg_fbs::Robot2PcWrapper> FlatbufferUtils::encode_twist_stamped(
     flatbuffers::FlatBufferBuilder& builder,
     robot_msg_fbs::RobotMsgType msg_type,
@@ -181,7 +180,6 @@ void FlatbufferUtils::decode_twist_stamped(
     ros_msg.twist.angular.z = twist->angular_z();
 }
 
-// ===================== 新增：MotorControl 编解码 =====================
 flatbuffers::Offset<robot_msg_fbs::Robot2PcWrapper> FlatbufferUtils::encode_motor_control(
     flatbuffers::FlatBufferBuilder& builder,
     robot_msg_fbs::RobotMsgType msg_type,
