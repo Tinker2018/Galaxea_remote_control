@@ -25,88 +25,87 @@ RobotTeleNode::RobotTeleNode() : Node("robot_tele_node") {
 RobotTeleNode::~RobotTeleNode() {}
 
 void RobotTeleNode::init_subscribers() {
-    // 修复：枚举值添加 JointPoseSubType:: 嵌套
-    sub_left_arm_joint_ = this->create_subscription<sensor_msgs::msg::JointState>(
+    // 修复：枚举值添加 RobotMsgType:: 嵌套
+    sub_feedback_arm_left_ = this->create_subscription<sensor_msgs::msg::JointState>(
         "/hdas/feedback_arm_left", 10,
         [this](const sensor_msgs::msg::JointState::SharedPtr msg) {
-            this->send_joint_state(robot_msg_fbs::JointPoseSubType_JOINT_STATE_LEFT_ARM, *msg);
+            this->send_joint_state(robot_msg_fbs::RobotMsgType_FEEDBACK_ARM_LEFT, *msg);
         }
     );
 
-    sub_right_arm_joint_ = this->create_subscription<sensor_msgs::msg::JointState>(
+    sub_feedback_arm_right_ = this->create_subscription<sensor_msgs::msg::JointState>(
         "/hdas/feedback_arm_right", 10,
         [this](const sensor_msgs::msg::JointState::SharedPtr msg) {
-            this->send_joint_state(robot_msg_fbs::JointPoseSubType_JOINT_STATE_RIGHT_ARM, *msg);
+            this->send_joint_state(robot_msg_fbs::RobotMsgType_FEEDBACK_ARM_RIGHT, *msg);
         }
     );
 
-    sub_left_gripper_joint_ = this->create_subscription<sensor_msgs::msg::JointState>(
+    sub_feedback_gripper_left_ = this->create_subscription<sensor_msgs::msg::JointState>(
         "/hdas/feedback_gripper_left", 10,
         [this](const sensor_msgs::msg::JointState::SharedPtr msg) {
-            this->send_joint_state(robot_msg_fbs::JointPoseSubType_JOINT_STATE_LEFT_GRIPPER, *msg);
+            this->send_joint_state(robot_msg_fbs::RobotMsgType_FEEDBACK_GRIPPER_LEFT, *msg);
         }
     );
 
-    sub_right_gripper_joint_ = this->create_subscription<sensor_msgs::msg::JointState>(
+    sub_feedback_gripper_right_ = this->create_subscription<sensor_msgs::msg::JointState>(
         "/hdas/feedback_gripper_right", 10,
         [this](const sensor_msgs::msg::JointState::SharedPtr msg) {
-            this->send_joint_state(robot_msg_fbs::JointPoseSubType_JOINT_STATE_RIGHT_GRIPPER, *msg);
+            this->send_joint_state(robot_msg_fbs::RobotMsgType_FEEDBACK_GRIPPER_RIGHT, *msg);
         }
     );
 
     sub_pose_ee_arm_left_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
         "/motion_control/pose_ee_arm_left", 10,
         [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
-            this->send_pose_stamped(robot_msg_fbs::JointPoseSubType_POSE_EE_LEFT_ARM, *msg);
+            this->send_pose_stamped(robot_msg_fbs::RobotMsgType_POSE_EE_LEFT_ARM, *msg);
         }
     );
 
     sub_pose_ee_arm_right_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
         "/motion_control/pose_ee_arm_right", 10,
         [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
-            this->send_pose_stamped(robot_msg_fbs::JointPoseSubType_POSE_EE_RIGHT_ARM, *msg);
+            this->send_pose_stamped(robot_msg_fbs::RobotMsgType_POSE_EE_RIGHT_ARM, *msg);
         }
     );
 
     sub_robot_target_pose_arm_left_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
         "/motion_target/target_pose_arm_left", 10,
         [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
-            this->send_pose_stamped(robot_msg_fbs::JointPoseSubType_TARGET_POSE_ARM_LEFT, *msg);
+            this->send_pose_stamped(robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_LEFT, *msg);
         }
     );
 
-    // 2. 订阅机器人本地右臂目标位姿
     sub_robot_target_pose_arm_right_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
         "/motion_target/target_pose_arm_right", 10,
         [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
-            this->send_pose_stamped(robot_msg_fbs::JointPoseSubType_TARGET_POSE_ARM_RIGHT, *msg);
+            this->send_pose_stamped(robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_RIGHT, *msg);
         }
     );
 
     RCLCPP_INFO(this->get_logger(), "Robot subscribers initialized");
 }
 
-void RobotTeleNode::send_joint_state(robot_msg_fbs::JointPoseSubType sub_type, const sensor_msgs::msg::JointState& msg) {
+void RobotTeleNode::send_joint_state(robot_msg_fbs::RobotMsgType msg_type, const sensor_msgs::msg::JointState& msg) {
     flatbuffers::FlatBufferBuilder builder(1024);
-    auto wrapper = UDPFlatbufferUtils::encode_joint_state(builder, sub_type, msg);
+    auto wrapper = UDPFlatbufferUtils::encode_joint_state(builder, msg_type, msg);
     robot_msg_fbs::FinishRobot2PcWrapperBuffer(builder, wrapper);
 
     if (udp_socket_->send(builder.GetBufferPointer(), builder.GetSize())) {
-        RCLCPP_DEBUG(this->get_logger(), "Joint state sent (type: %d)", sub_type);
+        RCLCPP_DEBUG(this->get_logger(), "Joint state sent (type: %d)", msg_type);
     } else {
-        RCLCPP_WARN(this->get_logger(), "Joint state send failed (type: %d)", sub_type);
+        RCLCPP_WARN(this->get_logger(), "Joint state send failed (type: %d)", msg_type);
     }
 }
 
-void RobotTeleNode::send_pose_stamped(robot_msg_fbs::JointPoseSubType sub_type, const geometry_msgs::msg::PoseStamped& msg) {
+void RobotTeleNode::send_pose_stamped(robot_msg_fbs::RobotMsgType msg_type, const geometry_msgs::msg::PoseStamped& msg) {
     flatbuffers::FlatBufferBuilder builder(1024);
-    auto wrapper = UDPFlatbufferUtils::encode_pose_stamped(builder, sub_type, msg);
+    auto wrapper = UDPFlatbufferUtils::encode_pose_stamped(builder, msg_type, msg);
     robot_msg_fbs::FinishRobot2PcWrapperBuffer(builder, wrapper);
 
     if (udp_socket_->send(builder.GetBufferPointer(), builder.GetSize())) {
-        RCLCPP_DEBUG(this->get_logger(), "Pose stamped sent (type: %d)", sub_type);
+        RCLCPP_DEBUG(this->get_logger(), "Pose stamped sent (type: %d)", msg_type);
     } else {
-        RCLCPP_WARN(this->get_logger(), "Pose stamped send failed (type: %d)", sub_type);
+        RCLCPP_WARN(this->get_logger(), "Pose stamped send failed (type: %d)", msg_type);
     }
 }
 

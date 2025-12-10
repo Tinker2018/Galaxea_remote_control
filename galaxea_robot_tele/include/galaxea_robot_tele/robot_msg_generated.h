@@ -27,42 +27,42 @@ struct PoseStampedBuilder;
 struct Robot2PcWrapper;
 struct Robot2PcWrapperBuilder;
 
-enum JointPoseSubType : uint16_t {
-  JointPoseSubType_UNKNOWN = 0,
-  JointPoseSubType_JOINT_STATE_LEFT_ARM = 1,
-  JointPoseSubType_JOINT_STATE_RIGHT_ARM = 2,
-  JointPoseSubType_JOINT_STATE_LEFT_GRIPPER = 3,
-  JointPoseSubType_JOINT_STATE_RIGHT_GRIPPER = 4,
-  JointPoseSubType_POSE_EE_LEFT_ARM = 5,
-  JointPoseSubType_POSE_EE_RIGHT_ARM = 6,
-  JointPoseSubType_TARGET_POSE_ARM_LEFT = 7,
-  JointPoseSubType_TARGET_POSE_ARM_RIGHT = 8,
-  JointPoseSubType_MIN = JointPoseSubType_UNKNOWN,
-  JointPoseSubType_MAX = JointPoseSubType_TARGET_POSE_ARM_RIGHT
+enum RobotMsgType : uint16_t {
+  RobotMsgType_UNKNOWN = 0,
+  RobotMsgType_FEEDBACK_ARM_LEFT = 1,
+  RobotMsgType_FEEDBACK_ARM_RIGHT = 2,
+  RobotMsgType_FEEDBACK_GRIPPER_LEFT = 3,
+  RobotMsgType_FEEDBACK_GRIPPER_RIGHT = 4,
+  RobotMsgType_POSE_EE_LEFT_ARM = 5,
+  RobotMsgType_POSE_EE_RIGHT_ARM = 6,
+  RobotMsgType_TARGET_POSE_ARM_LEFT = 7,
+  RobotMsgType_TARGET_POSE_ARM_RIGHT = 8,
+  RobotMsgType_MIN = RobotMsgType_UNKNOWN,
+  RobotMsgType_MAX = RobotMsgType_TARGET_POSE_ARM_RIGHT
 };
 
-inline const JointPoseSubType (&EnumValuesJointPoseSubType())[9] {
-  static const JointPoseSubType values[] = {
-    JointPoseSubType_UNKNOWN,
-    JointPoseSubType_JOINT_STATE_LEFT_ARM,
-    JointPoseSubType_JOINT_STATE_RIGHT_ARM,
-    JointPoseSubType_JOINT_STATE_LEFT_GRIPPER,
-    JointPoseSubType_JOINT_STATE_RIGHT_GRIPPER,
-    JointPoseSubType_POSE_EE_LEFT_ARM,
-    JointPoseSubType_POSE_EE_RIGHT_ARM,
-    JointPoseSubType_TARGET_POSE_ARM_LEFT,
-    JointPoseSubType_TARGET_POSE_ARM_RIGHT
+inline const RobotMsgType (&EnumValuesRobotMsgType())[9] {
+  static const RobotMsgType values[] = {
+    RobotMsgType_UNKNOWN,
+    RobotMsgType_FEEDBACK_ARM_LEFT,
+    RobotMsgType_FEEDBACK_ARM_RIGHT,
+    RobotMsgType_FEEDBACK_GRIPPER_LEFT,
+    RobotMsgType_FEEDBACK_GRIPPER_RIGHT,
+    RobotMsgType_POSE_EE_LEFT_ARM,
+    RobotMsgType_POSE_EE_RIGHT_ARM,
+    RobotMsgType_TARGET_POSE_ARM_LEFT,
+    RobotMsgType_TARGET_POSE_ARM_RIGHT
   };
   return values;
 }
 
-inline const char * const *EnumNamesJointPoseSubType() {
+inline const char * const *EnumNamesRobotMsgType() {
   static const char * const names[10] = {
     "UNKNOWN",
-    "JOINT_STATE_LEFT_ARM",
-    "JOINT_STATE_RIGHT_ARM",
-    "JOINT_STATE_LEFT_GRIPPER",
-    "JOINT_STATE_RIGHT_GRIPPER",
+    "FEEDBACK_ARM_LEFT",
+    "FEEDBACK_ARM_RIGHT",
+    "FEEDBACK_GRIPPER_LEFT",
+    "FEEDBACK_GRIPPER_RIGHT",
     "POSE_EE_LEFT_ARM",
     "POSE_EE_RIGHT_ARM",
     "TARGET_POSE_ARM_LEFT",
@@ -72,10 +72,10 @@ inline const char * const *EnumNamesJointPoseSubType() {
   return names;
 }
 
-inline const char *EnumNameJointPoseSubType(JointPoseSubType e) {
-  if (::flatbuffers::IsOutRange(e, JointPoseSubType_UNKNOWN, JointPoseSubType_TARGET_POSE_ARM_RIGHT)) return "";
+inline const char *EnumNameRobotMsgType(RobotMsgType e) {
+  if (::flatbuffers::IsOutRange(e, RobotMsgType_UNKNOWN, RobotMsgType_TARGET_POSE_ARM_RIGHT)) return "";
   const size_t index = static_cast<size_t>(e);
-  return EnumNamesJointPoseSubType()[index];
+  return EnumNamesRobotMsgType()[index];
 }
 
 enum Robot2PcMsg : uint8_t {
@@ -239,8 +239,8 @@ struct JointState FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
     VT_STAMP_NANOSEC = 16,
     VT_FRAME_ID = 18
   };
-  robot_msg_fbs::JointPoseSubType sub_type() const {
-    return static_cast<robot_msg_fbs::JointPoseSubType>(GetField<uint16_t>(VT_SUB_TYPE, 0));
+  robot_msg_fbs::RobotMsgType msg_type() const {
+    return static_cast<robot_msg_fbs::RobotMsgType>(GetField<uint16_t>(VT_SUB_TYPE, 0));
   }
   const ::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>> *names() const {
     return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>> *>(VT_NAMES);
@@ -287,8 +287,8 @@ struct JointStateBuilder {
   typedef JointState Table;
   ::flatbuffers::FlatBufferBuilder &fbb_;
   ::flatbuffers::uoffset_t start_;
-  void add_sub_type(robot_msg_fbs::JointPoseSubType sub_type) {
-    fbb_.AddElement<uint16_t>(JointState::VT_SUB_TYPE, static_cast<uint16_t>(sub_type), 0);
+  void add_msg_type(robot_msg_fbs::RobotMsgType msg_type) {
+    fbb_.AddElement<uint16_t>(JointState::VT_SUB_TYPE, static_cast<uint16_t>(msg_type), 0);
   }
   void add_names(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>>> names) {
     fbb_.AddOffset(JointState::VT_NAMES, names);
@@ -324,7 +324,7 @@ struct JointStateBuilder {
 
 inline ::flatbuffers::Offset<JointState> CreateJointState(
     ::flatbuffers::FlatBufferBuilder &_fbb,
-    robot_msg_fbs::JointPoseSubType sub_type = robot_msg_fbs::JointPoseSubType_UNKNOWN,
+    robot_msg_fbs::RobotMsgType msg_type = robot_msg_fbs::RobotMsgType_UNKNOWN,
     ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>>> names = 0,
     ::flatbuffers::Offset<::flatbuffers::Vector<float>> positions = 0,
     ::flatbuffers::Offset<::flatbuffers::Vector<float>> velocities = 0,
@@ -340,13 +340,13 @@ inline ::flatbuffers::Offset<JointState> CreateJointState(
   builder_.add_velocities(velocities);
   builder_.add_positions(positions);
   builder_.add_names(names);
-  builder_.add_sub_type(sub_type);
+  builder_.add_msg_type(msg_type);
   return builder_.Finish();
 }
 
 inline ::flatbuffers::Offset<JointState> CreateJointStateDirect(
     ::flatbuffers::FlatBufferBuilder &_fbb,
-    robot_msg_fbs::JointPoseSubType sub_type = robot_msg_fbs::JointPoseSubType_UNKNOWN,
+    robot_msg_fbs::RobotMsgType msg_type = robot_msg_fbs::RobotMsgType_UNKNOWN,
     const std::vector<::flatbuffers::Offset<::flatbuffers::String>> *names = nullptr,
     const std::vector<float> *positions = nullptr,
     const std::vector<float> *velocities = nullptr,
@@ -361,7 +361,7 @@ inline ::flatbuffers::Offset<JointState> CreateJointStateDirect(
   auto frame_id__ = frame_id ? _fbb.CreateString(frame_id) : 0;
   return robot_msg_fbs::CreateJointState(
       _fbb,
-      sub_type,
+      msg_type,
       names__,
       positions__,
       velocities__,
@@ -380,8 +380,8 @@ struct PoseStamped FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
     VT_STAMP_NANOSEC = 10,
     VT_POSE = 12
   };
-  robot_msg_fbs::JointPoseSubType sub_type() const {
-    return static_cast<robot_msg_fbs::JointPoseSubType>(GetField<uint16_t>(VT_SUB_TYPE, 0));
+  robot_msg_fbs::RobotMsgType msg_type() const {
+    return static_cast<robot_msg_fbs::RobotMsgType>(GetField<uint16_t>(VT_SUB_TYPE, 0));
   }
   const ::flatbuffers::String *frame_id() const {
     return GetPointer<const ::flatbuffers::String *>(VT_FRAME_ID);
@@ -412,8 +412,8 @@ struct PoseStampedBuilder {
   typedef PoseStamped Table;
   ::flatbuffers::FlatBufferBuilder &fbb_;
   ::flatbuffers::uoffset_t start_;
-  void add_sub_type(robot_msg_fbs::JointPoseSubType sub_type) {
-    fbb_.AddElement<uint16_t>(PoseStamped::VT_SUB_TYPE, static_cast<uint16_t>(sub_type), 0);
+  void add_msg_type(robot_msg_fbs::RobotMsgType msg_type) {
+    fbb_.AddElement<uint16_t>(PoseStamped::VT_SUB_TYPE, static_cast<uint16_t>(msg_type), 0);
   }
   void add_frame_id(::flatbuffers::Offset<::flatbuffers::String> frame_id) {
     fbb_.AddOffset(PoseStamped::VT_FRAME_ID, frame_id);
@@ -440,7 +440,7 @@ struct PoseStampedBuilder {
 
 inline ::flatbuffers::Offset<PoseStamped> CreatePoseStamped(
     ::flatbuffers::FlatBufferBuilder &_fbb,
-    robot_msg_fbs::JointPoseSubType sub_type = robot_msg_fbs::JointPoseSubType_UNKNOWN,
+    robot_msg_fbs::RobotMsgType msg_type = robot_msg_fbs::RobotMsgType_UNKNOWN,
     ::flatbuffers::Offset<::flatbuffers::String> frame_id = 0,
     int64_t stamp_sec = 0,
     int64_t stamp_nanosec = 0,
@@ -450,13 +450,13 @@ inline ::flatbuffers::Offset<PoseStamped> CreatePoseStamped(
   builder_.add_stamp_sec(stamp_sec);
   builder_.add_pose(pose);
   builder_.add_frame_id(frame_id);
-  builder_.add_sub_type(sub_type);
+  builder_.add_msg_type(msg_type);
   return builder_.Finish();
 }
 
 inline ::flatbuffers::Offset<PoseStamped> CreatePoseStampedDirect(
     ::flatbuffers::FlatBufferBuilder &_fbb,
-    robot_msg_fbs::JointPoseSubType sub_type = robot_msg_fbs::JointPoseSubType_UNKNOWN,
+    robot_msg_fbs::RobotMsgType msg_type = robot_msg_fbs::RobotMsgType_UNKNOWN,
     const char *frame_id = nullptr,
     int64_t stamp_sec = 0,
     int64_t stamp_nanosec = 0,
@@ -464,7 +464,7 @@ inline ::flatbuffers::Offset<PoseStamped> CreatePoseStampedDirect(
   auto frame_id__ = frame_id ? _fbb.CreateString(frame_id) : 0;
   return robot_msg_fbs::CreatePoseStamped(
       _fbb,
-      sub_type,
+      msg_type,
       frame_id__,
       stamp_sec,
       stamp_nanosec,

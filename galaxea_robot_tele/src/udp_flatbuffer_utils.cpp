@@ -4,7 +4,7 @@ namespace galaxea_robot_tele {
 
 flatbuffers::Offset<robot_msg_fbs::Robot2PcWrapper> UDPFlatbufferUtils::encode_joint_state(
     flatbuffers::FlatBufferBuilder& builder,
-    robot_msg_fbs::JointPoseSubType sub_type,
+    robot_msg_fbs::RobotMsgType msg_type,
     const sensor_msgs::msg::JointState& ros_msg) {
     
     std::vector<float> positions(ros_msg.position.begin(), ros_msg.position.end());
@@ -19,7 +19,7 @@ flatbuffers::Offset<robot_msg_fbs::Robot2PcWrapper> UDPFlatbufferUtils::encode_j
     // 修复：CreateJointState 添加 robot_msg_fbs:: 命名空间
     auto js = robot_msg_fbs::CreateJointState(
         builder,
-        sub_type,
+        msg_type,
         names_vec, positions_vec, velocities_vec, efforts_vec,
         static_cast<int64_t>(ros_msg.header.stamp.sec),
         static_cast<int64_t>(ros_msg.header.stamp.nanosec),
@@ -36,7 +36,7 @@ flatbuffers::Offset<robot_msg_fbs::Robot2PcWrapper> UDPFlatbufferUtils::encode_j
 
 flatbuffers::Offset<robot_msg_fbs::Robot2PcWrapper> UDPFlatbufferUtils::encode_pose_stamped(
     flatbuffers::FlatBufferBuilder& builder,
-    robot_msg_fbs::JointPoseSubType sub_type,
+    robot_msg_fbs::RobotMsgType msg_type,
     const geometry_msgs::msg::PoseStamped& ros_msg) {
     
     // 修复：CreatePose 添加 robot_msg_fbs:: 命名空间
@@ -50,7 +50,7 @@ flatbuffers::Offset<robot_msg_fbs::Robot2PcWrapper> UDPFlatbufferUtils::encode_p
     // 修复：CreatePoseStamped 添加 robot_msg_fbs:: 命名空间
     auto ps = robot_msg_fbs::CreatePoseStamped(
         builder,
-        sub_type,
+        msg_type,
         builder.CreateString(ros_msg.header.frame_id),
         static_cast<int64_t>(ros_msg.header.stamp.sec),
         static_cast<int64_t>(ros_msg.header.stamp.nanosec),

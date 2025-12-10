@@ -19,15 +19,15 @@ public:
 private:
     void init_subscribers();
     // 修复：参数类型添加 robot_msg_fbs:: 命名空间
-    void send_joint_state(robot_msg_fbs::JointPoseSubType sub_type, const sensor_msgs::msg::JointState& msg);
-    void send_pose_stamped(robot_msg_fbs::JointPoseSubType sub_type, const geometry_msgs::msg::PoseStamped& msg);
+    void send_joint_state(robot_msg_fbs::RobotMsgType msg_type, const sensor_msgs::msg::JointState& msg);
+    void send_pose_stamped(robot_msg_fbs::RobotMsgType msg_type, const geometry_msgs::msg::PoseStamped& msg);
     std::unique_ptr<UDPSocket> udp_socket_;
     UDPConfig udp_config_;
     
-    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_left_arm_joint_;
-    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_right_arm_joint_;
-    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_left_gripper_joint_;
-    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_right_gripper_joint_;
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_feedback_arm_left_;
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_feedback_arm_right_;
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_feedback_gripper_left_;
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_feedback_gripper_right_;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr sub_pose_ee_arm_left_;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr sub_pose_ee_arm_right_;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr sub_robot_target_pose_arm_left_;

@@ -14,13 +14,13 @@ public:
     // 编码关节状态消息（修复：参数类型添加 robot_msg_fbs:: 命名空间）
     static flatbuffers::Offset<robot_msg_fbs::Robot2PcWrapper> encode_joint_state(
         flatbuffers::FlatBufferBuilder& builder,
-        robot_msg_fbs::JointPoseSubType sub_type,
+        robot_msg_fbs::RobotMsgType msg_type,
         const sensor_msgs::msg::JointState& ros_msg);
 
     // 编码位姿消息（修复：参数类型添加 robot_msg_fbs:: 命名空间）
     static flatbuffers::Offset<robot_msg_fbs::Robot2PcWrapper> encode_pose_stamped(
         flatbuffers::FlatBufferBuilder& builder,
-        robot_msg_fbs::JointPoseSubType sub_type,
+        robot_msg_fbs::RobotMsgType msg_type,
         const geometry_msgs::msg::PoseStamped& ros_msg);
 
     // 解码关节状态消息（修复：参数类型添加 robot_msg_fbs:: 命名空间）

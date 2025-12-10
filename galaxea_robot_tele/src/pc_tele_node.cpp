@@ -65,22 +65,22 @@ void PCTeleNode::recv_loop() {
                 auto js = wrapper->msg_as_JointState();
                 if (!js) break;
                 
-                // 修复：枚举值添加 JointPoseSubType:: 嵌套
-                switch (js->sub_type()) {
-                    case robot_msg_fbs::JointPoseSubType_JOINT_STATE_LEFT_ARM:  // 1
+                // 修复：枚举值添加 RobotMsgType:: 嵌套
+                switch (js->msg_type()) {
+                    case robot_msg_fbs::RobotMsgType_FEEDBACK_ARM_LEFT:  // 1
                         parse_joint_state(js, pub_left_arm_joint_);
                         break;
-                    case robot_msg_fbs::JointPoseSubType_JOINT_STATE_RIGHT_ARM: // 2
+                    case robot_msg_fbs::RobotMsgType_FEEDBACK_ARM_RIGHT: // 2
                         parse_joint_state(js, pub_right_arm_joint_);
                         break;
-                    case robot_msg_fbs::JointPoseSubType_JOINT_STATE_LEFT_GRIPPER: // 3
+                    case robot_msg_fbs::RobotMsgType_FEEDBACK_GRIPPER_LEFT: // 3
                         parse_joint_state(js, pub_left_gripper_joint_);
                         break;
-                    case robot_msg_fbs::JointPoseSubType_JOINT_STATE_RIGHT_GRIPPER: // 4
+                    case robot_msg_fbs::RobotMsgType_FEEDBACK_GRIPPER_RIGHT: // 4
                         parse_joint_state(js, pub_right_gripper_joint_);
                         break;
                     default:
-                        RCLCPP_WARN(this->get_logger(), "Unknown joint state type: %d", js->sub_type());
+                        RCLCPP_WARN(this->get_logger(), "Unknown joint state type: %d", js->msg_type());
                 }
                 break;
             }
@@ -88,22 +88,22 @@ void PCTeleNode::recv_loop() {
                 auto ps = wrapper->msg_as_PoseStamped();
                 if (!ps) break;
                 
-                // 修复：枚举值添加 JointPoseSubType:: 嵌套
-                switch (ps->sub_type()) {
-                    case robot_msg_fbs::JointPoseSubType_POSE_EE_LEFT_ARM: // 5
+                // 修复：枚举值添加 RobotMsgType:: 嵌套
+                switch (ps->msg_type()) {
+                    case robot_msg_fbs::RobotMsgType_POSE_EE_LEFT_ARM: // 5
                         parse_pose_stamped(ps, pub_pose_ee_arm_left_);
                         break;
-                    case robot_msg_fbs::JointPoseSubType_POSE_EE_RIGHT_ARM: // 6
+                    case robot_msg_fbs::RobotMsgType_POSE_EE_RIGHT_ARM: // 6
                         parse_pose_stamped(ps, pub_pose_ee_arm_right_);
                         break;
-                    case robot_msg_fbs::JointPoseSubType_TARGET_POSE_ARM_LEFT: // 7
+                    case robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_LEFT: // 7
                         parse_pose_stamped(ps, pub_pc_target_pose_arm_left_);
                         break;
-                    case robot_msg_fbs::JointPoseSubType_TARGET_POSE_ARM_RIGHT: // 8
+                    case robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_RIGHT: // 8
                         parse_pose_stamped(ps, pub_pc_target_pose_arm_right_);
                         break;
                     default:
-                        RCLCPP_WARN(this->get_logger(), "Unknown pose stamped type: %d", ps->sub_type());
+                        RCLCPP_WARN(this->get_logger(), "Unknown pose stamped type: %d", ps->msg_type());
                 }
                 break;
             }

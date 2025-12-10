@@ -1,11 +1,11 @@
 namespace robot_msg_fbs;  // 原 udp_communication → robot_msg_fbs
 
-enum JointPoseSubType: uint16 {
+enum RobotMsgType: uint16 {
     UNKNOWN = 0,
-    JOINT_STATE_LEFT_ARM = 1,
-    JOINT_STATE_RIGHT_ARM = 2,
-    JOINT_STATE_LEFT_GRIPPER = 3,
-    JOINT_STATE_RIGHT_GRIPPER = 4,
+    FEEDBACK_ARM_LEFT = 1,
+    FEEDBACK_ARM_RIGHT = 2,
+    FEEDBACK_GRIPPER_LEFT = 3,
+    FEEDBACK_GRIPPER_RIGHT = 4,
     POSE_EE_LEFT_ARM = 5,
     POSE_EE_RIGHT_ARM = 6,
     TARGET_POSE_ARM_LEFT = 7,
@@ -23,7 +23,7 @@ table Pose {
 }
 
 table JointState {
-    sub_type: JointPoseSubType = UNKNOWN;
+    msg_type: RobotMsgType = UNKNOWN;
     names: [string];
     positions: [float];
     velocities: [float];
@@ -34,7 +34,7 @@ table JointState {
 }
 
 table PoseStamped {
-    sub_type: JointPoseSubType = UNKNOWN;
+    msg_type: RobotMsgType = UNKNOWN;
     frame_id: string;
     stamp_sec: int64;
     stamp_nanosec: int64;
