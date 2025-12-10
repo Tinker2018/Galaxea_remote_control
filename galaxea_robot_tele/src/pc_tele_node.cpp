@@ -48,14 +48,33 @@ PCTeleNode::PCTeleNode() : Node("pc_tele_node"), is_running_(true) {
         }
     );
 
+    rclcpp::SubscriptionOptions sub_options;
+    sub_options.ignore_local_publications = true;
+
+    sub_target_pose_arm_left_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
+        "/motion_target/target_pose_arm_left", 10,  // QoS深度
+        [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
+            this->send_pose_stamped(robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_LEFT, *msg);
+        },
+        sub_options 
+    );
+
+    sub_target_pose_arm_right_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
+        "/motion_target/target_pose_arm_right", 10,
+        [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
+            this->send_pose_stamped(robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_RIGHT, *msg);
+        },
+        sub_options
+    );
+
     pub_left_arm_joint_ = this->create_publisher<sensor_msgs::msg::JointState>("/hdas/feedback_arm_left", 10);
     pub_right_arm_joint_ = this->create_publisher<sensor_msgs::msg::JointState>("/hdas/feedback_arm_right", 10);
     pub_left_gripper_joint_ = this->create_publisher<sensor_msgs::msg::JointState>("/hdas/feedback_gripper_left", 10);
     pub_right_gripper_joint_ = this->create_publisher<sensor_msgs::msg::JointState>("/hdas/feedback_gripper_right", 10);
     pub_pose_ee_arm_left_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_control/pose_ee_arm_left", 10);
     pub_pose_ee_arm_right_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_control/pose_ee_arm_right", 10);
-    pub_pc_target_pose_arm_left_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_target/target_pose_arm_left", 10);
-    pub_pc_target_pose_arm_right_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_target/target_pose_arm_right", 10);
+    pub_target_pose_arm_left_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_target/target_pose_arm_left", 10);
+    pub_target_pose_arm_right_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_target/target_pose_arm_right", 10);
         
     RCLCPP_INFO(this->get_logger(), "PC initialized");
 
@@ -125,10 +144,10 @@ void PCTeleNode::recv_loop() {
                         parse_pose_stamped(ps, pub_pose_ee_arm_right_);
                         break;
                     case robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_LEFT: // 7
-                        parse_pose_stamped(ps, pub_pc_target_pose_arm_left_);
+                        parse_pose_stamped(ps, pub_target_pose_arm_left_);
                         break;
                     case robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_RIGHT: // 8
-                        parse_pose_stamped(ps, pub_pc_target_pose_arm_right_);
+                        parse_pose_stamped(ps, pub_target_pose_arm_right_);
                         break;
                     default:
                         RCLCPP_WARN(this->get_logger(), "Unknown pose stamped type: %d", ps->msg_type());

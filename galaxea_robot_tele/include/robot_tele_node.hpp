@@ -37,6 +37,8 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_target_joint_state_arm_right_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_target_position_gripper_left_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_target_position_gripper_right_;
+    rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_target_pose_arm_left_;
+    rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_target_pose_arm_right_;
 
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_feedback_arm_left_;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_feedback_arm_right_;
@@ -44,8 +46,8 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_feedback_gripper_right_;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr sub_pose_ee_arm_left_;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr sub_pose_ee_arm_right_;
-    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr sub_robot_target_pose_arm_left_;
-    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr sub_robot_target_pose_arm_right_;
+    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr sub_target_pose_arm_left_;
+    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr sub_target_pose_arm_right_;
 };
 
 }  // namespace galaxea_robot_tele
