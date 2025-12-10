@@ -1,0 +1,12 @@
+# 新增节点名称作为顶层键
+udp_communication_node:
+  ros__parameters:
+    udp_config:
+      pc_ip: "127.0.0.1"        # 基础配置，启动时可覆盖
+      robot_ip: "127.0.0.1"
+      udp_port: 8888
+      role: "pc"                # 默认角色，启动时动态修改
+      send_msg: "Hello Robot!"
+      buffer_size: 1024
+
+

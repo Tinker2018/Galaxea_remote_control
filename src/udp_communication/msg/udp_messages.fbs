@@ -1,0 +1,57 @@
+namespace udp_communication;
+
+// ---------------- PC → Robot 的消息类型 ----------------
+// 1. 控制指令（运动参数）
+table ControlCmd {
+  linear_vel: float;  // 线速度 (m/s)
+  angular_vel: float; // 角速度 (rad/s)
+  mode: int;          // 模式：0=停止，1=前进，2=后退
+}
+
+// 2. 心跳包（PC在线状态）
+table Heartbeat {
+  timestamp: int64;   // 时间戳 (ms)
+  pc_status: bool;    // PC在线状态：true=在线，false=离线
+}
+
+// 封装 PC→Robot 的所有消息
+union Pc2RobotMsg {
+  ControlCmd,
+  Heartbeat
+}
+
+// ---------------- Robot → PC 的消息类型 ----------------
+// 1. 传感器数据
+table SensorData {
+  temperature: float; // 温度 (℃)
+  distance: float;    // 距离 (m)
+  timestamp: int64;   // 时间戳 (ms)
+}
+
+// 2. 状态上报（Robot运行状态）
+table StatusReport {
+  battery: float;     // 电量 (0-100)
+  error_code: int;    // 错误码：0=正常，1=故障
+  timestamp: int64;   // 时间戳 (ms)
+}
+
+// 封装 Robot→PC 的所有消息
+union Robot2PcMsg {
+  SensorData,
+  StatusReport
+}
+
+// ---------------- 通用消息包装器（根类型） ----------------
+// PC→Robot 的消息包装器（根类型）
+table Pc2RobotWrapper {
+  msg: Pc2RobotMsg; // 实际消息体（ControlCmd/Heartbeat）
+}
+
+// Robot→PC 的消息包装器（根类型）
+table Robot2PcWrapper {
+  msg: Robot2PcMsg; // 实际消息体（SensorData/StatusReport）
+}
+
+// 根类型（唯一入口）
+root_type Pc2RobotWrapper;
+root_type Robot2PcWrapper;
