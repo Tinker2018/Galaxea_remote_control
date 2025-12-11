@@ -8,9 +8,6 @@ RobotTeleNode::RobotTeleNode() : Node("robot_tele_node"), is_running_(true)  {
     std::string config_path = ament_index_cpp::get_package_share_directory("galaxea_robot_tele") + "/config/udp_config.yaml";
     try {
         udp_config_ = UDPSocket::load_config(config_path);
-        if (udp_config_.role != "robot") {
-            throw std::runtime_error("Config role is not 'robot'");
-        }
         udp_socket_ = std::make_unique<UDPSocket>(udp_config_);
         RCLCPP_INFO(this->get_logger(), "Robot UDP initialized successfully");
     } catch (const std::exception& e) {
@@ -19,84 +16,53 @@ RobotTeleNode::RobotTeleNode() : Node("robot_tele_node"), is_running_(true)  {
         return;
     }
 
+    // 1. 订阅 (Robot -> PC)
     sub_feedback_arm_left_ = this->create_subscription<sensor_msgs::msg::JointState>(
-        "/hdas/feedback_arm_left", 10,
-        [this](const sensor_msgs::msg::JointState::SharedPtr msg) {
-            this->send_joint_state(robot_msg_fbs::RobotMsgType_FEEDBACK_ARM_LEFT, *msg);
-        }
-    );
-
+        "/hdas/feedback_arm_left", 10, [this](const sensor_msgs::msg::JointState::SharedPtr msg) { this->send_joint_state(robot_msg_fbs::RobotMsgType_FEEDBACK_ARM_LEFT, *msg); });
     sub_feedback_arm_right_ = this->create_subscription<sensor_msgs::msg::JointState>(
-        "/hdas/feedback_arm_right", 10,
-        [this](const sensor_msgs::msg::JointState::SharedPtr msg) {
-            this->send_joint_state(robot_msg_fbs::RobotMsgType_FEEDBACK_ARM_RIGHT, *msg);
-        }
-    );
-
+        "/hdas/feedback_arm_right", 10, [this](const sensor_msgs::msg::JointState::SharedPtr msg) { this->send_joint_state(robot_msg_fbs::RobotMsgType_FEEDBACK_ARM_RIGHT, *msg); });
     sub_feedback_gripper_left_ = this->create_subscription<sensor_msgs::msg::JointState>(
-        "/hdas/feedback_gripper_left", 10,
-        [this](const sensor_msgs::msg::JointState::SharedPtr msg) {
-            this->send_joint_state(robot_msg_fbs::RobotMsgType_FEEDBACK_GRIPPER_LEFT, *msg);
-        }
-    );
-
+        "/hdas/feedback_gripper_left", 10, [this](const sensor_msgs::msg::JointState::SharedPtr msg) { this->send_joint_state(robot_msg_fbs::RobotMsgType_FEEDBACK_GRIPPER_LEFT, *msg); });
     sub_feedback_gripper_right_ = this->create_subscription<sensor_msgs::msg::JointState>(
-        "/hdas/feedback_gripper_right", 10,
-        [this](const sensor_msgs::msg::JointState::SharedPtr msg) {
-            this->send_joint_state(robot_msg_fbs::RobotMsgType_FEEDBACK_GRIPPER_RIGHT, *msg);
-        }
-    );
+        "/hdas/feedback_gripper_right", 10, [this](const sensor_msgs::msg::JointState::SharedPtr msg) { this->send_joint_state(robot_msg_fbs::RobotMsgType_FEEDBACK_GRIPPER_RIGHT, *msg); });
 
     sub_pose_ee_arm_left_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-        "/motion_control/pose_ee_arm_left", 10,
-        [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
-            this->send_pose_stamped(robot_msg_fbs::RobotMsgType_POSE_EE_LEFT_ARM, *msg);
-        }
-    );
-
+        "/motion_control/pose_ee_arm_left", 10, [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) { this->send_pose_stamped(robot_msg_fbs::RobotMsgType_POSE_EE_LEFT_ARM, *msg); });
     sub_pose_ee_arm_right_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-        "/motion_control/pose_ee_arm_right", 10,
-        [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
-            this->send_pose_stamped(robot_msg_fbs::RobotMsgType_POSE_EE_RIGHT_ARM, *msg);
-        }
-    );
+        "/motion_control/pose_ee_arm_right", 10, [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) { this->send_pose_stamped(robot_msg_fbs::RobotMsgType_POSE_EE_RIGHT_ARM, *msg); });
 
-    rclcpp::SubscriptionOptions sub_options;
-    sub_options.ignore_local_publications = true;
-
+    auto sub_opt = rclcpp::SubscriptionOptions();
+    sub_opt.ignore_local_publications = true;
     sub_target_pose_arm_left_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-        "/motion_target/target_pose_arm_left", 10,  // QoS深度
-        [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
-            this->send_pose_stamped(robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_LEFT, *msg);
-        },
-        sub_options 
-    );
-
+        "/motion_target/target_pose_arm_left", 10, [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) { this->send_pose_stamped(robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_LEFT, *msg); }, sub_opt);
     sub_target_pose_arm_right_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-        "/motion_target/target_pose_arm_right", 10,
-        [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
-            this->send_pose_stamped(robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_RIGHT, *msg);
-        },
-        sub_options
-    );
+        "/motion_target/target_pose_arm_right", 10, [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) { this->send_pose_stamped(robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_RIGHT, *msg); }, sub_opt);
 
+
+    // 2. 发布者 (PC -> Robot)
     pub_target_joint_state_arm_left_ = this->create_publisher<sensor_msgs::msg::JointState>("/motion_target/target_joint_state_arm_left", 10);
     pub_target_joint_state_arm_right_ = this->create_publisher<sensor_msgs::msg::JointState>("/motion_target/target_joint_state_arm_right", 10);
     pub_target_position_gripper_left_ = this->create_publisher<sensor_msgs::msg::JointState>("/motion_target/target_position_gripper_left", 10);
     pub_target_position_gripper_right_ = this->create_publisher<sensor_msgs::msg::JointState>("/motion_target/target_position_gripper_right", 10);
     pub_target_pose_arm_left_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_target/target_pose_arm_left", 10);
     pub_target_pose_arm_right_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_target/target_pose_arm_right", 10);
+    
     pub_target_speed_chassis_ = this->create_publisher<geometry_msgs::msg::TwistStamped>("/motion_control/control_speed_chassis", 10);
     pub_target_speed_torso_ = this->create_publisher<geometry_msgs::msg::TwistStamped>("/motion_control/control_speed_torso", 10);
+    
     pub_control_arm_left_ = this->create_publisher<hdas_msg::msg::MotorControl>("/motion_control/control_arm_left", 10);
     pub_control_arm_right_ = this->create_publisher<hdas_msg::msg::MotorControl>("/motion_control/control_arm_right", 10);
+
+    // 3. 客户端 (Robot 去调用本地服务)
+    cli_teleop_ = this->create_client<system_manager_msg::srv::TeleopFrame>("/system_manager/teleop/service");
+    cli_start_data_ = this->create_client<std_srvs::srv::Trigger>("/start_data_collection"); // 新增
+    cli_stop_data_ = this->create_client<std_srvs::srv::Trigger>("/stop_data_collection");   // 新增
 
     RCLCPP_INFO(this->get_logger(), "Robot initialized");
     recv_thread_ = std::thread(&RobotTeleNode::recv_loop, this);
 }
 
-RobotTeleNode::~RobotTeleNode() 
-{
+RobotTeleNode::~RobotTeleNode() {
     is_running_ = false;
     if (recv_thread_.joinable()) {
         recv_thread_.join();
@@ -114,116 +80,144 @@ void RobotTeleNode::recv_loop() {
             continue;
         }
 
-        auto wrapper = robot_msg_fbs::GetRobot2PcWrapper(buffer.data());
-        if (!wrapper) {
-            RCLCPP_WARN(this->get_logger(), "Invalid data received");
-            continue;
-        }
+        auto wrapper = robot_msg_fbs::GetCommWrapper(buffer.data());
+        if (!wrapper) continue;
 
-switch (wrapper->msg_type()) {
-    case robot_msg_fbs::Robot2PcMsg_JointState: {
-        auto js = wrapper->msg_as_JointState();
-        if (!js) break;
+        switch (wrapper->msg_type()) {
+            // ... (其他 Topic 消息保持不变) ...
+            case robot_msg_fbs::AnyMsg_JointState: {
+                auto js = wrapper->msg_as_JointState();
+                if (!js) break;
+                switch (js->msg_type()) {
+                    case robot_msg_fbs::RobotMsgType_TARGET_JOINT_STATE_ARM_LEFT: parse_joint_state(js, pub_target_joint_state_arm_left_); break;
+                    case robot_msg_fbs::RobotMsgType_TARGET_JOINT_STATE_ARM_RIGHT: parse_joint_state(js, pub_target_joint_state_arm_right_); break;
+                    case robot_msg_fbs::RobotMsgType_TARGET_POSITION_GRIPPER_LEFT: parse_joint_state(js, pub_target_position_gripper_left_); break;
+                    case robot_msg_fbs::RobotMsgType_TARGET_POSITION_GRIPPER_RIGHT: parse_joint_state(js, pub_target_position_gripper_right_); break;
+                    default: break;
+                }
+                break;
+            }
+            case robot_msg_fbs::AnyMsg_PoseStamped: {
+                auto ps = wrapper->msg_as_PoseStamped();
+                if (!ps) break;
+                switch (ps->msg_type()) {
+                    case robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_LEFT: parse_pose_stamped(ps, pub_target_pose_arm_left_); break;
+                    case robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_RIGHT: parse_pose_stamped(ps, pub_target_pose_arm_right_); break;
+                    default: break;
+                }
+                break;
+            }
+            case robot_msg_fbs::AnyMsg_TwistStamped: {
+                auto ts = wrapper->msg_as_TwistStamped();
+                if (!ts) break;
+                switch (ts->msg_type()) {
+                    case robot_msg_fbs::RobotMsgType_TARGET_SPEED_CHASSIS: parse_twist_stamped(ts, pub_target_speed_chassis_); break;
+                    case robot_msg_fbs::RobotMsgType_TARGET_SPEED_TORSO: parse_twist_stamped(ts, pub_target_speed_torso_); break;
+                    default: break;
+                }
+                break;
+            }
+            case robot_msg_fbs::AnyMsg_MotorControl: {
+                auto mc = wrapper->msg_as_MotorControl();
+                if (!mc) break;
+                switch (mc->msg_type()) {
+                    case robot_msg_fbs::RobotMsgType_CONTROL_ARM_LEFT: parse_motor_control(mc, pub_control_arm_left_); break;
+                    case robot_msg_fbs::RobotMsgType_CONTROL_ARM_RIGHT: parse_motor_control(mc, pub_control_arm_right_); break;
+                    default: break;
+                }
+                break;
+            }
 
-        switch (js->msg_type()) {
-            case robot_msg_fbs::RobotMsgType_TARGET_JOINT_STATE_ARM_LEFT:
-                parse_joint_state(js, pub_target_joint_state_arm_left_);
-                break;
-            case robot_msg_fbs::RobotMsgType_TARGET_JOINT_STATE_ARM_RIGHT:
-                parse_joint_state(js, pub_target_joint_state_arm_right_);
-                break;
-            case robot_msg_fbs::RobotMsgType_TARGET_POSITION_GRIPPER_LEFT:
-                parse_joint_state(js, pub_target_position_gripper_left_);
-                break;
-            case robot_msg_fbs::RobotMsgType_TARGET_POSITION_GRIPPER_RIGHT:
-                parse_joint_state(js, pub_target_position_gripper_right_);
-                break;
-            default:
-                RCLCPP_WARN(this->get_logger(), "Unknown joint state type: %d", js->msg_type());
-        }
-        break;
-    }
-    case robot_msg_fbs::Robot2PcMsg_PoseStamped: {
-        auto ps = wrapper->msg_as_PoseStamped();
-        if (!ps) break;
-        
-        switch (ps->msg_type()) {
-            case robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_LEFT: // 7
-                parse_pose_stamped(ps, pub_target_pose_arm_left_);
-                break;
-            case robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_RIGHT: // 8
-                parse_pose_stamped(ps, pub_target_pose_arm_right_);
-                break;
-            default:
-                RCLCPP_WARN(this->get_logger(), "Unknown pose stamped type: %d", ps->msg_type());
-        }
-        break;
-    }
-    case robot_msg_fbs::Robot2PcMsg_TwistStamped: {
-        auto ts = wrapper->msg_as_TwistStamped();
-        if (!ts) break;
+            // --- 处理服务请求 ---
+            case robot_msg_fbs::AnyMsg_ServiceData: {
+                auto srv = wrapper->msg_as_ServiceData();
+                if (!srv) break;
+                uint64_t req_id = srv->req_id();
 
-        switch (ts->msg_type()) {
-            case robot_msg_fbs::RobotMsgType_TARGET_SPEED_CHASSIS: // 13
-                parse_twist_stamped(ts, pub_target_speed_chassis_);
-                break;
-            case robot_msg_fbs::RobotMsgType_TARGET_SPEED_TORSO: // 14
-                parse_twist_stamped(ts, pub_target_speed_torso_);
-                break;
-            default:
-                RCLCPP_WARN(this->get_logger(), "Unknown twist stamped type: %d", ts->msg_type());
-        }
-        break;
-    }
-    case robot_msg_fbs::Robot2PcMsg_MotorControl: {
-        auto mc = wrapper->msg_as_MotorControl();
-        if (!mc) break;
+                // 1. Teleop Frame 请求
+                if (srv->type() == robot_msg_fbs::ServiceType_REQ_TELEOP_FRAME) {
+                    auto req = std::make_shared<system_manager_msg::srv::TeleopFrame::Request>();
+                    FlatbufferUtils::decode_teleop_req(srv, *req);
 
-        switch (mc->msg_type()) {
-            case robot_msg_fbs::RobotMsgType_CONTROL_ARM_LEFT: // 15
-                parse_motor_control(mc, pub_control_arm_left_);
+                    if (cli_teleop_->service_is_ready()) {
+                        cli_teleop_->async_send_request(req, 
+                            [this, req_id](rclcpp::Client<system_manager_msg::srv::TeleopFrame>::SharedFuture future) {
+                                auto response = future.get();
+                                flatbuffers::FlatBufferBuilder builder(1024);
+                                auto wrapper = FlatbufferUtils::encode_teleop_resp(builder, req_id, *response);
+                                robot_msg_fbs::FinishCommWrapperBuffer(builder, wrapper);
+                                udp_socket_->send(builder.GetBufferPointer(), builder.GetSize());
+                            });
+                    }
+                }
+                
+                // 2. Start Data 请求 (新增)
+                else if (srv->type() == robot_msg_fbs::ServiceType_REQ_START_DATA) {
+                    auto req = std::make_shared<std_srvs::srv::Trigger::Request>();
+                    // Trigger request是空的，不需要decode
+
+                    if (cli_start_data_->service_is_ready()) {
+                        cli_start_data_->async_send_request(req, 
+                            [this, req_id](rclcpp::Client<std_srvs::srv::Trigger>::SharedFuture future) {
+                                auto response = future.get();
+                                flatbuffers::FlatBufferBuilder builder(1024);
+                                // 注意填入 RESP_START_DATA
+                                auto wrapper = FlatbufferUtils::encode_trigger_resp(
+                                    builder, req_id, robot_msg_fbs::ServiceType_RESP_START_DATA, *response);
+                                robot_msg_fbs::FinishCommWrapperBuffer(builder, wrapper);
+                                udp_socket_->send(builder.GetBufferPointer(), builder.GetSize());
+                            });
+                    } else {
+                        RCLCPP_WARN(this->get_logger(), "Start Data service not ready!");
+                    }
+                }
+                
+                // 3. Stop Data 请求 (新增)
+                else if (srv->type() == robot_msg_fbs::ServiceType_REQ_STOP_DATA) {
+                    auto req = std::make_shared<std_srvs::srv::Trigger::Request>();
+
+                    if (cli_stop_data_->service_is_ready()) {
+                        cli_stop_data_->async_send_request(req, 
+                            [this, req_id](rclcpp::Client<std_srvs::srv::Trigger>::SharedFuture future) {
+                                auto response = future.get();
+                                flatbuffers::FlatBufferBuilder builder(1024);
+                                // 注意填入 RESP_STOP_DATA
+                                auto wrapper = FlatbufferUtils::encode_trigger_resp(
+                                    builder, req_id, robot_msg_fbs::ServiceType_RESP_STOP_DATA, *response);
+                                robot_msg_fbs::FinishCommWrapperBuffer(builder, wrapper);
+                                udp_socket_->send(builder.GetBufferPointer(), builder.GetSize());
+                            });
+                    } else {
+                        RCLCPP_WARN(this->get_logger(), "Stop Data service not ready!");
+                    }
+                }
                 break;
-            case robot_msg_fbs::RobotMsgType_CONTROL_ARM_RIGHT: // 16
-                parse_motor_control(mc, pub_control_arm_right_);
-                break;
-            default:
-                RCLCPP_WARN(this->get_logger(), "Unknown motor control type: %d", mc->msg_type());
+            }
+            default: break;
         }
-        break;
     }
-    default:
-        RCLCPP_WARN(this->get_logger(), "Unknown message type: %d", wrapper->msg_type());
 }
 
-    }
-}
-
-
-
-void RobotTeleNode::parse_joint_state(const robot_msg_fbs::JointState* fb_msg, 
-                                  rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr publisher) {
+// 辅助函数保持不变...
+void RobotTeleNode::parse_joint_state(const robot_msg_fbs::JointState* fb_msg, rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr publisher) {
     sensor_msgs::msg::JointState ros_msg;
     FlatbufferUtils::decode_joint_state(fb_msg, ros_msg);
     publisher->publish(ros_msg);
 }
 
-void RobotTeleNode::parse_pose_stamped(const robot_msg_fbs::PoseStamped* fb_msg,
-                                  rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher) {
+void RobotTeleNode::parse_pose_stamped(const robot_msg_fbs::PoseStamped* fb_msg, rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher) {
     geometry_msgs::msg::PoseStamped ros_msg;
     FlatbufferUtils::decode_pose_stamped(fb_msg, ros_msg);
     publisher->publish(ros_msg);
 }
 
-void RobotTeleNode::parse_twist_stamped(const robot_msg_fbs::TwistStamped* fb_msg,
-                           rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr publisher) {
+void RobotTeleNode::parse_twist_stamped(const robot_msg_fbs::TwistStamped* fb_msg, rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr publisher) {
     geometry_msgs::msg::TwistStamped ros_msg;
     FlatbufferUtils::decode_twist_stamped(fb_msg, ros_msg);
     publisher->publish(ros_msg);
 }
 
-
-void RobotTeleNode::parse_motor_control(const robot_msg_fbs::MotorControl* fb_msg,
-                           rclcpp::Publisher<hdas_msg::msg::MotorControl>::SharedPtr publisher) {
+void RobotTeleNode::parse_motor_control(const robot_msg_fbs::MotorControl* fb_msg, rclcpp::Publisher<hdas_msg::msg::MotorControl>::SharedPtr publisher) {
     hdas_msg::msg::MotorControl ros_msg;
     FlatbufferUtils::decode_motor_control(fb_msg, ros_msg);
     publisher->publish(ros_msg);
@@ -232,25 +226,15 @@ void RobotTeleNode::parse_motor_control(const robot_msg_fbs::MotorControl* fb_ms
 void RobotTeleNode::send_joint_state(robot_msg_fbs::RobotMsgType msg_type, const sensor_msgs::msg::JointState& msg) {
     flatbuffers::FlatBufferBuilder builder(1024);
     auto wrapper = FlatbufferUtils::encode_joint_state(builder, msg_type, msg);
-    robot_msg_fbs::FinishRobot2PcWrapperBuffer(builder, wrapper);
-
-    if (udp_socket_->send(builder.GetBufferPointer(), builder.GetSize())) {
-        RCLCPP_DEBUG(this->get_logger(), "Joint state sent (type: %d)", msg_type);
-    } else {
-        RCLCPP_WARN(this->get_logger(), "Joint state send failed (type: %d)", msg_type);
-    }
+    robot_msg_fbs::FinishCommWrapperBuffer(builder, wrapper);
+    udp_socket_->send(builder.GetBufferPointer(), builder.GetSize());
 }
 
 void RobotTeleNode::send_pose_stamped(robot_msg_fbs::RobotMsgType msg_type, const geometry_msgs::msg::PoseStamped& msg) {
     flatbuffers::FlatBufferBuilder builder(1024);
     auto wrapper = FlatbufferUtils::encode_pose_stamped(builder, msg_type, msg);
-    robot_msg_fbs::FinishRobot2PcWrapperBuffer(builder, wrapper);
-
-    if (udp_socket_->send(builder.GetBufferPointer(), builder.GetSize())) {
-        RCLCPP_DEBUG(this->get_logger(), "Pose stamped sent (type: %d)", msg_type);
-    } else {
-        RCLCPP_WARN(this->get_logger(), "Pose stamped send failed (type: %d)", msg_type);
-    }
+    robot_msg_fbs::FinishCommWrapperBuffer(builder, wrapper);
+    udp_socket_->send(builder.GetBufferPointer(), builder.GetSize());
 }
 
 }  // namespace galaxea_robot_tele

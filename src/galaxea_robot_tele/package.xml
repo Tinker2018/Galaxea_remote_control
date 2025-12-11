@@ -8,11 +8,15 @@
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  
   <build_depend>hdas_msg</build_depend>
   <exec_depend>hdas_msg</exec_depend>
+  
   <depend>rclcpp</depend>
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
+  <depend>std_srvs</depend> <!-- 已添加：标准服务依赖 -->
+  <depend>system_manager_msg</depend> <!-- 已添加：系统管理服务依赖 -->
   <depend>ament_index_cpp</depend>
   <depend>flatbuffers</depend>
   <depend>yaml-cpp</depend>
@@ -24,4 +28,3 @@
     <build_type>ament_cmake</build_type>
   </export>
 </package>
- 

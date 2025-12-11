@@ -1,5 +1,5 @@
 udp_config:
-  role: "robot"  # 角色设为PC
+  role: "pc"  # 角色设为PC
   buffer_size: 1024  # 缓冲区大小，保持不变
   robot:  # 机器人端配置对PC来说可留空（但结构需保留）
     local_ip: "10.0.42.184"

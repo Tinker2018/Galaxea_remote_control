@@ -30,14 +30,29 @@ struct TwistStampedBuilder;
 struct Pose;
 struct PoseBuilder;
 
-struct JointState;
-struct JointStateBuilder;
-
 struct PoseStamped;
 struct PoseStampedBuilder;
 
-struct Robot2PcWrapper;
-struct Robot2PcWrapperBuilder;
+struct JointState;
+struct JointStateBuilder;
+
+struct TeleopFrameRequest;
+struct TeleopFrameRequestBuilder;
+
+struct TeleopFrameResponse;
+struct TeleopFrameResponseBuilder;
+
+struct TriggerRequest;
+struct TriggerRequestBuilder;
+
+struct TriggerResponse;
+struct TriggerResponseBuilder;
+
+struct ServiceData;
+struct ServiceDataBuilder;
+
+struct CommWrapper;
+struct CommWrapperBuilder;
 
 enum RobotMsgType : uint16_t {
   RobotMsgType_UNKNOWN = 0,
@@ -114,67 +129,119 @@ inline const char *EnumNameRobotMsgType(RobotMsgType e) {
   return EnumNamesRobotMsgType()[index];
 }
 
-enum Robot2PcMsg : uint8_t {
-  Robot2PcMsg_NONE = 0,
-  Robot2PcMsg_JointState = 1,
-  Robot2PcMsg_PoseStamped = 2,
-  Robot2PcMsg_TwistStamped = 3,
-  Robot2PcMsg_MotorControl = 4,
-  Robot2PcMsg_MIN = Robot2PcMsg_NONE,
-  Robot2PcMsg_MAX = Robot2PcMsg_MotorControl
+enum ServiceType : uint8_t {
+  ServiceType_UNKNOWN_SRV = 0,
+  ServiceType_REQ_TELEOP_FRAME = 1,
+  ServiceType_RESP_TELEOP_FRAME = 2,
+  ServiceType_REQ_START_DATA = 3,
+  ServiceType_RESP_START_DATA = 4,
+  ServiceType_REQ_STOP_DATA = 5,
+  ServiceType_RESP_STOP_DATA = 6,
+  ServiceType_MIN = ServiceType_UNKNOWN_SRV,
+  ServiceType_MAX = ServiceType_RESP_STOP_DATA
 };
 
-inline const Robot2PcMsg (&EnumValuesRobot2PcMsg())[5] {
-  static const Robot2PcMsg values[] = {
-    Robot2PcMsg_NONE,
-    Robot2PcMsg_JointState,
-    Robot2PcMsg_PoseStamped,
-    Robot2PcMsg_TwistStamped,
-    Robot2PcMsg_MotorControl
+inline const ServiceType (&EnumValuesServiceType())[7] {
+  static const ServiceType values[] = {
+    ServiceType_UNKNOWN_SRV,
+    ServiceType_REQ_TELEOP_FRAME,
+    ServiceType_RESP_TELEOP_FRAME,
+    ServiceType_REQ_START_DATA,
+    ServiceType_RESP_START_DATA,
+    ServiceType_REQ_STOP_DATA,
+    ServiceType_RESP_STOP_DATA
   };
   return values;
 }
 
-inline const char * const *EnumNamesRobot2PcMsg() {
-  static const char * const names[6] = {
-    "NONE",
-    "JointState",
-    "PoseStamped",
-    "TwistStamped",
-    "MotorControl",
+inline const char * const *EnumNamesServiceType() {
+  static const char * const names[8] = {
+    "UNKNOWN_SRV",
+    "REQ_TELEOP_FRAME",
+    "RESP_TELEOP_FRAME",
+    "REQ_START_DATA",
+    "RESP_START_DATA",
+    "REQ_STOP_DATA",
+    "RESP_STOP_DATA",
     nullptr
   };
   return names;
 }
 
-inline const char *EnumNameRobot2PcMsg(Robot2PcMsg e) {
-  if (::flatbuffers::IsOutRange(e, Robot2PcMsg_NONE, Robot2PcMsg_MotorControl)) return "";
+inline const char *EnumNameServiceType(ServiceType e) {
+  if (::flatbuffers::IsOutRange(e, ServiceType_UNKNOWN_SRV, ServiceType_RESP_STOP_DATA)) return "";
   const size_t index = static_cast<size_t>(e);
-  return EnumNamesRobot2PcMsg()[index];
+  return EnumNamesServiceType()[index];
 }
 
-template<typename T> struct Robot2PcMsgTraits {
-  static const Robot2PcMsg enum_value = Robot2PcMsg_NONE;
+enum AnyMsg : uint8_t {
+  AnyMsg_NONE = 0,
+  AnyMsg_JointState = 1,
+  AnyMsg_PoseStamped = 2,
+  AnyMsg_TwistStamped = 3,
+  AnyMsg_MotorControl = 4,
+  AnyMsg_ServiceData = 5,
+  AnyMsg_MIN = AnyMsg_NONE,
+  AnyMsg_MAX = AnyMsg_ServiceData
 };
 
-template<> struct Robot2PcMsgTraits<robot_msg_fbs::JointState> {
-  static const Robot2PcMsg enum_value = Robot2PcMsg_JointState;
+inline const AnyMsg (&EnumValuesAnyMsg())[6] {
+  static const AnyMsg values[] = {
+    AnyMsg_NONE,
+    AnyMsg_JointState,
+    AnyMsg_PoseStamped,
+    AnyMsg_TwistStamped,
+    AnyMsg_MotorControl,
+    AnyMsg_ServiceData
+  };
+  return values;
+}
+
+inline const char * const *EnumNamesAnyMsg() {
+  static const char * const names[7] = {
+    "NONE",
+    "JointState",
+    "PoseStamped",
+    "TwistStamped",
+    "MotorControl",
+    "ServiceData",
+    nullptr
+  };
+  return names;
+}
+
+inline const char *EnumNameAnyMsg(AnyMsg e) {
+  if (::flatbuffers::IsOutRange(e, AnyMsg_NONE, AnyMsg_ServiceData)) return "";
+  const size_t index = static_cast<size_t>(e);
+  return EnumNamesAnyMsg()[index];
+}
+
+template<typename T> struct AnyMsgTraits {
+  static const AnyMsg enum_value = AnyMsg_NONE;
 };
 
-template<> struct Robot2PcMsgTraits<robot_msg_fbs::PoseStamped> {
-  static const Robot2PcMsg enum_value = Robot2PcMsg_PoseStamped;
+template<> struct AnyMsgTraits<robot_msg_fbs::JointState> {
+  static const AnyMsg enum_value = AnyMsg_JointState;
 };
 
-template<> struct Robot2PcMsgTraits<robot_msg_fbs::TwistStamped> {
-  static const Robot2PcMsg enum_value = Robot2PcMsg_TwistStamped;
+template<> struct AnyMsgTraits<robot_msg_fbs::PoseStamped> {
+  static const AnyMsg enum_value = AnyMsg_PoseStamped;
 };
 
-template<> struct Robot2PcMsgTraits<robot_msg_fbs::MotorControl> {
-  static const Robot2PcMsg enum_value = Robot2PcMsg_MotorControl;
+template<> struct AnyMsgTraits<robot_msg_fbs::TwistStamped> {
+  static const AnyMsg enum_value = AnyMsg_TwistStamped;
 };
 
-bool VerifyRobot2PcMsg(::flatbuffers::Verifier &verifier, const void *obj, Robot2PcMsg type);
-bool VerifyRobot2PcMsgVector(::flatbuffers::Verifier &verifier, const ::flatbuffers::Vector<::flatbuffers::Offset<void>> *values, const ::flatbuffers::Vector<uint8_t> *types);
+template<> struct AnyMsgTraits<robot_msg_fbs::MotorControl> {
+  static const AnyMsg enum_value = AnyMsg_MotorControl;
+};
+
+template<> struct AnyMsgTraits<robot_msg_fbs::ServiceData> {
+  static const AnyMsg enum_value = AnyMsg_ServiceData;
+};
+
+bool VerifyAnyMsg(::flatbuffers::Verifier &verifier, const void *obj, AnyMsg type);
+bool VerifyAnyMsgVector(::flatbuffers::Verifier &verifier, const ::flatbuffers::Vector<::flatbuffers::Offset<void>> *values, const ::flatbuffers::Vector<uint8_t> *types);
 
 struct Header FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef HeaderBuilder Builder;
@@ -504,22 +571,14 @@ struct TwistStamped FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef TwistStampedBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_MSG_TYPE = 4,
-    VT_FRAME_ID = 6,
-    VT_STAMP_SEC = 8,
-    VT_STAMP_NANOSEC = 10,
-    VT_TWIST = 12
+    VT_HEADER = 6,
+    VT_TWIST = 8
   };
   robot_msg_fbs::RobotMsgType msg_type() const {
     return static_cast<robot_msg_fbs::RobotMsgType>(GetField<uint16_t>(VT_MSG_TYPE, 0));
   }
-  const ::flatbuffers::String *frame_id() const {
-    return GetPointer<const ::flatbuffers::String *>(VT_FRAME_ID);
-  }
-  int64_t stamp_sec() const {
-    return GetField<int64_t>(VT_STAMP_SEC, 0);
-  }
-  int64_t stamp_nanosec() const {
-    return GetField<int64_t>(VT_STAMP_NANOSEC, 0);
+  const robot_msg_fbs::Header *header() const {
+    return GetPointer<const robot_msg_fbs::Header *>(VT_HEADER);
   }
   const robot_msg_fbs::Twist *twist() const {
     return GetPointer<const robot_msg_fbs::Twist *>(VT_TWIST);
@@ -527,10 +586,8 @@ struct TwistStamped FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<uint16_t>(verifier, VT_MSG_TYPE, 2) &&
-           VerifyOffset(verifier, VT_FRAME_ID) &&
-           verifier.VerifyString(frame_id()) &&
-           VerifyField<int64_t>(verifier, VT_STAMP_SEC, 8) &&
-           VerifyField<int64_t>(verifier, VT_STAMP_NANOSEC, 8) &&
+           VerifyOffset(verifier, VT_HEADER) &&
+           verifier.VerifyTable(header()) &&
            VerifyOffset(verifier, VT_TWIST) &&
            verifier.VerifyTable(twist()) &&
            verifier.EndTable();
@@ -544,14 +601,8 @@ struct TwistStampedBuilder {
   void add_msg_type(robot_msg_fbs::RobotMsgType msg_type) {
     fbb_.AddElement<uint16_t>(TwistStamped::VT_MSG_TYPE, static_cast<uint16_t>(msg_type), 0);
   }
-  void add_frame_id(::flatbuffers::Offset<::flatbuffers::String> frame_id) {
-    fbb_.AddOffset(TwistStamped::VT_FRAME_ID, frame_id);
-  }
-  void add_stamp_sec(int64_t stamp_sec) {
-    fbb_.AddElement<int64_t>(TwistStamped::VT_STAMP_SEC, stamp_sec, 0);
-  }
-  void add_stamp_nanosec(int64_t stamp_nanosec) {
-    fbb_.AddElement<int64_t>(TwistStamped::VT_STAMP_NANOSEC, stamp_nanosec, 0);
+  void add_header(::flatbuffers::Offset<robot_msg_fbs::Header> header) {
+    fbb_.AddOffset(TwistStamped::VT_HEADER, header);
   }
   void add_twist(::flatbuffers::Offset<robot_msg_fbs::Twist> twist) {
     fbb_.AddOffset(TwistStamped::VT_TWIST, twist);
@@ -570,34 +621,13 @@ struct TwistStampedBuilder {
 inline ::flatbuffers::Offset<TwistStamped> CreateTwistStamped(
     ::flatbuffers::FlatBufferBuilder &_fbb,
     robot_msg_fbs::RobotMsgType msg_type = robot_msg_fbs::RobotMsgType_UNKNOWN,
-    ::flatbuffers::Offset<::flatbuffers::String> frame_id = 0,
-    int64_t stamp_sec = 0,
-    int64_t stamp_nanosec = 0,
+    ::flatbuffers::Offset<robot_msg_fbs::Header> header = 0,
     ::flatbuffers::Offset<robot_msg_fbs::Twist> twist = 0) {
   TwistStampedBuilder builder_(_fbb);
-  builder_.add_stamp_nanosec(stamp_nanosec);
-  builder_.add_stamp_sec(stamp_sec);
   builder_.add_twist(twist);
-  builder_.add_frame_id(frame_id);
+  builder_.add_header(header);
   builder_.add_msg_type(msg_type);
   return builder_.Finish();
-}
-
-inline ::flatbuffers::Offset<TwistStamped> CreateTwistStampedDirect(
-    ::flatbuffers::FlatBufferBuilder &_fbb,
-    robot_msg_fbs::RobotMsgType msg_type = robot_msg_fbs::RobotMsgType_UNKNOWN,
-    const char *frame_id = nullptr,
-    int64_t stamp_sec = 0,
-    int64_t stamp_nanosec = 0,
-    ::flatbuffers::Offset<robot_msg_fbs::Twist> twist = 0) {
-  auto frame_id__ = frame_id ? _fbb.CreateString(frame_id) : 0;
-  return robot_msg_fbs::CreateTwistStamped(
-      _fbb,
-      msg_type,
-      frame_id__,
-      stamp_sec,
-      stamp_nanosec,
-      twist);
 }
 
 struct Pose FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
@@ -701,170 +731,18 @@ inline ::flatbuffers::Offset<Pose> CreatePose(
   return builder_.Finish();
 }
 
-struct JointState FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
-  typedef JointStateBuilder Builder;
-  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
-    VT_MSG_TYPE = 4,
-    VT_NAMES = 6,
-    VT_POSITIONS = 8,
-    VT_VELOCITIES = 10,
-    VT_EFFORTS = 12,
-    VT_STAMP_SEC = 14,
-    VT_STAMP_NANOSEC = 16,
-    VT_FRAME_ID = 18
-  };
-  robot_msg_fbs::RobotMsgType msg_type() const {
-    return static_cast<robot_msg_fbs::RobotMsgType>(GetField<uint16_t>(VT_MSG_TYPE, 0));
-  }
-  const ::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>> *names() const {
-    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>> *>(VT_NAMES);
-  }
-  const ::flatbuffers::Vector<float> *positions() const {
-    return GetPointer<const ::flatbuffers::Vector<float> *>(VT_POSITIONS);
-  }
-  const ::flatbuffers::Vector<float> *velocities() const {
-    return GetPointer<const ::flatbuffers::Vector<float> *>(VT_VELOCITIES);
-  }
-  const ::flatbuffers::Vector<float> *efforts() const {
-    return GetPointer<const ::flatbuffers::Vector<float> *>(VT_EFFORTS);
-  }
-  int64_t stamp_sec() const {
-    return GetField<int64_t>(VT_STAMP_SEC, 0);
-  }
-  int64_t stamp_nanosec() const {
-    return GetField<int64_t>(VT_STAMP_NANOSEC, 0);
-  }
-  const ::flatbuffers::String *frame_id() const {
-    return GetPointer<const ::flatbuffers::String *>(VT_FRAME_ID);
-  }
-  bool Verify(::flatbuffers::Verifier &verifier) const {
-    return VerifyTableStart(verifier) &&
-           VerifyField<uint16_t>(verifier, VT_MSG_TYPE, 2) &&
-           VerifyOffset(verifier, VT_NAMES) &&
-           verifier.VerifyVector(names()) &&
-           verifier.VerifyVectorOfStrings(names()) &&
-           VerifyOffset(verifier, VT_POSITIONS) &&
-           verifier.VerifyVector(positions()) &&
-           VerifyOffset(verifier, VT_VELOCITIES) &&
-           verifier.VerifyVector(velocities()) &&
-           VerifyOffset(verifier, VT_EFFORTS) &&
-           verifier.VerifyVector(efforts()) &&
-           VerifyField<int64_t>(verifier, VT_STAMP_SEC, 8) &&
-           VerifyField<int64_t>(verifier, VT_STAMP_NANOSEC, 8) &&
-           VerifyOffset(verifier, VT_FRAME_ID) &&
-           verifier.VerifyString(frame_id()) &&
-           verifier.EndTable();
-  }
-};
-
-struct JointStateBuilder {
-  typedef JointState Table;
-  ::flatbuffers::FlatBufferBuilder &fbb_;
-  ::flatbuffers::uoffset_t start_;
-  void add_msg_type(robot_msg_fbs::RobotMsgType msg_type) {
-    fbb_.AddElement<uint16_t>(JointState::VT_MSG_TYPE, static_cast<uint16_t>(msg_type), 0);
-  }
-  void add_names(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>>> names) {
-    fbb_.AddOffset(JointState::VT_NAMES, names);
-  }
-  void add_positions(::flatbuffers::Offset<::flatbuffers::Vector<float>> positions) {
-    fbb_.AddOffset(JointState::VT_POSITIONS, positions);
-  }
-  void add_velocities(::flatbuffers::Offset<::flatbuffers::Vector<float>> velocities) {
-    fbb_.AddOffset(JointState::VT_VELOCITIES, velocities);
-  }
-  void add_efforts(::flatbuffers::Offset<::flatbuffers::Vector<float>> efforts) {
-    fbb_.AddOffset(JointState::VT_EFFORTS, efforts);
-  }
-  void add_stamp_sec(int64_t stamp_sec) {
-    fbb_.AddElement<int64_t>(JointState::VT_STAMP_SEC, stamp_sec, 0);
-  }
-  void add_stamp_nanosec(int64_t stamp_nanosec) {
-    fbb_.AddElement<int64_t>(JointState::VT_STAMP_NANOSEC, stamp_nanosec, 0);
-  }
-  void add_frame_id(::flatbuffers::Offset<::flatbuffers::String> frame_id) {
-    fbb_.AddOffset(JointState::VT_FRAME_ID, frame_id);
-  }
-  explicit JointStateBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
-        : fbb_(_fbb) {
-    start_ = fbb_.StartTable();
-  }
-  ::flatbuffers::Offset<JointState> Finish() {
-    const auto end = fbb_.EndTable(start_);
-    auto o = ::flatbuffers::Offset<JointState>(end);
-    return o;
-  }
-};
-
-inline ::flatbuffers::Offset<JointState> CreateJointState(
-    ::flatbuffers::FlatBufferBuilder &_fbb,
-    robot_msg_fbs::RobotMsgType msg_type = robot_msg_fbs::RobotMsgType_UNKNOWN,
-    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>>> names = 0,
-    ::flatbuffers::Offset<::flatbuffers::Vector<float>> positions = 0,
-    ::flatbuffers::Offset<::flatbuffers::Vector<float>> velocities = 0,
-    ::flatbuffers::Offset<::flatbuffers::Vector<float>> efforts = 0,
-    int64_t stamp_sec = 0,
-    int64_t stamp_nanosec = 0,
-    ::flatbuffers::Offset<::flatbuffers::String> frame_id = 0) {
-  JointStateBuilder builder_(_fbb);
-  builder_.add_stamp_nanosec(stamp_nanosec);
-  builder_.add_stamp_sec(stamp_sec);
-  builder_.add_frame_id(frame_id);
-  builder_.add_efforts(efforts);
-  builder_.add_velocities(velocities);
-  builder_.add_positions(positions);
-  builder_.add_names(names);
-  builder_.add_msg_type(msg_type);
-  return builder_.Finish();
-}
-
-inline ::flatbuffers::Offset<JointState> CreateJointStateDirect(
-    ::flatbuffers::FlatBufferBuilder &_fbb,
-    robot_msg_fbs::RobotMsgType msg_type = robot_msg_fbs::RobotMsgType_UNKNOWN,
-    const std::vector<::flatbuffers::Offset<::flatbuffers::String>> *names = nullptr,
-    const std::vector<float> *positions = nullptr,
-    const std::vector<float> *velocities = nullptr,
-    const std::vector<float> *efforts = nullptr,
-    int64_t stamp_sec = 0,
-    int64_t stamp_nanosec = 0,
-    const char *frame_id = nullptr) {
-  auto names__ = names ? _fbb.CreateVector<::flatbuffers::Offset<::flatbuffers::String>>(*names) : 0;
-  auto positions__ = positions ? _fbb.CreateVector<float>(*positions) : 0;
-  auto velocities__ = velocities ? _fbb.CreateVector<float>(*velocities) : 0;
-  auto efforts__ = efforts ? _fbb.CreateVector<float>(*efforts) : 0;
-  auto frame_id__ = frame_id ? _fbb.CreateString(frame_id) : 0;
-  return robot_msg_fbs::CreateJointState(
-      _fbb,
-      msg_type,
-      names__,
-      positions__,
-      velocities__,
-      efforts__,
-      stamp_sec,
-      stamp_nanosec,
-      frame_id__);
-}
-
 struct PoseStamped FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef PoseStampedBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_MSG_TYPE = 4,
-    VT_FRAME_ID = 6,
-    VT_STAMP_SEC = 8,
-    VT_STAMP_NANOSEC = 10,
-    VT_POSE = 12
+    VT_HEADER = 6,
+    VT_POSE = 8
   };
   robot_msg_fbs::RobotMsgType msg_type() const {
     return static_cast<robot_msg_fbs::RobotMsgType>(GetField<uint16_t>(VT_MSG_TYPE, 0));
   }
-  const ::flatbuffers::String *frame_id() const {
-    return GetPointer<const ::flatbuffers::String *>(VT_FRAME_ID);
-  }
-  int64_t stamp_sec() const {
-    return GetField<int64_t>(VT_STAMP_SEC, 0);
-  }
-  int64_t stamp_nanosec() const {
-    return GetField<int64_t>(VT_STAMP_NANOSEC, 0);
+  const robot_msg_fbs::Header *header() const {
+    return GetPointer<const robot_msg_fbs::Header *>(VT_HEADER);
   }
   const robot_msg_fbs::Pose *pose() const {
     return GetPointer<const robot_msg_fbs::Pose *>(VT_POSE);
@@ -872,10 +750,8 @@ struct PoseStamped FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<uint16_t>(verifier, VT_MSG_TYPE, 2) &&
-           VerifyOffset(verifier, VT_FRAME_ID) &&
-           verifier.VerifyString(frame_id()) &&
-           VerifyField<int64_t>(verifier, VT_STAMP_SEC, 8) &&
-           VerifyField<int64_t>(verifier, VT_STAMP_NANOSEC, 8) &&
+           VerifyOffset(verifier, VT_HEADER) &&
+           verifier.VerifyTable(header()) &&
            VerifyOffset(verifier, VT_POSE) &&
            verifier.VerifyTable(pose()) &&
            verifier.EndTable();
@@ -889,14 +765,8 @@ struct PoseStampedBuilder {
   void add_msg_type(robot_msg_fbs::RobotMsgType msg_type) {
     fbb_.AddElement<uint16_t>(PoseStamped::VT_MSG_TYPE, static_cast<uint16_t>(msg_type), 0);
   }
-  void add_frame_id(::flatbuffers::Offset<::flatbuffers::String> frame_id) {
-    fbb_.AddOffset(PoseStamped::VT_FRAME_ID, frame_id);
-  }
-  void add_stamp_sec(int64_t stamp_sec) {
-    fbb_.AddElement<int64_t>(PoseStamped::VT_STAMP_SEC, stamp_sec, 0);
-  }
-  void add_stamp_nanosec(int64_t stamp_nanosec) {
-    fbb_.AddElement<int64_t>(PoseStamped::VT_STAMP_NANOSEC, stamp_nanosec, 0);
+  void add_header(::flatbuffers::Offset<robot_msg_fbs::Header> header) {
+    fbb_.AddOffset(PoseStamped::VT_HEADER, header);
   }
   void add_pose(::flatbuffers::Offset<robot_msg_fbs::Pose> pose) {
     fbb_.AddOffset(PoseStamped::VT_POSE, pose);
@@ -915,181 +785,593 @@ struct PoseStampedBuilder {
 inline ::flatbuffers::Offset<PoseStamped> CreatePoseStamped(
     ::flatbuffers::FlatBufferBuilder &_fbb,
     robot_msg_fbs::RobotMsgType msg_type = robot_msg_fbs::RobotMsgType_UNKNOWN,
-    ::flatbuffers::Offset<::flatbuffers::String> frame_id = 0,
-    int64_t stamp_sec = 0,
-    int64_t stamp_nanosec = 0,
+    ::flatbuffers::Offset<robot_msg_fbs::Header> header = 0,
     ::flatbuffers::Offset<robot_msg_fbs::Pose> pose = 0) {
   PoseStampedBuilder builder_(_fbb);
-  builder_.add_stamp_nanosec(stamp_nanosec);
-  builder_.add_stamp_sec(stamp_sec);
   builder_.add_pose(pose);
-  builder_.add_frame_id(frame_id);
+  builder_.add_header(header);
   builder_.add_msg_type(msg_type);
   return builder_.Finish();
 }
 
-inline ::flatbuffers::Offset<PoseStamped> CreatePoseStampedDirect(
+struct JointState FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef JointStateBuilder Builder;
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_MSG_TYPE = 4,
+    VT_HEADER = 6,
+    VT_NAMES = 8,
+    VT_POSITIONS = 10,
+    VT_VELOCITIES = 12,
+    VT_EFFORTS = 14
+  };
+  robot_msg_fbs::RobotMsgType msg_type() const {
+    return static_cast<robot_msg_fbs::RobotMsgType>(GetField<uint16_t>(VT_MSG_TYPE, 0));
+  }
+  const robot_msg_fbs::Header *header() const {
+    return GetPointer<const robot_msg_fbs::Header *>(VT_HEADER);
+  }
+  const ::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>> *names() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>> *>(VT_NAMES);
+  }
+  const ::flatbuffers::Vector<float> *positions() const {
+    return GetPointer<const ::flatbuffers::Vector<float> *>(VT_POSITIONS);
+  }
+  const ::flatbuffers::Vector<float> *velocities() const {
+    return GetPointer<const ::flatbuffers::Vector<float> *>(VT_VELOCITIES);
+  }
+  const ::flatbuffers::Vector<float> *efforts() const {
+    return GetPointer<const ::flatbuffers::Vector<float> *>(VT_EFFORTS);
+  }
+  bool Verify(::flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<uint16_t>(verifier, VT_MSG_TYPE, 2) &&
+           VerifyOffset(verifier, VT_HEADER) &&
+           verifier.VerifyTable(header()) &&
+           VerifyOffset(verifier, VT_NAMES) &&
+           verifier.VerifyVector(names()) &&
+           verifier.VerifyVectorOfStrings(names()) &&
+           VerifyOffset(verifier, VT_POSITIONS) &&
+           verifier.VerifyVector(positions()) &&
+           VerifyOffset(verifier, VT_VELOCITIES) &&
+           verifier.VerifyVector(velocities()) &&
+           VerifyOffset(verifier, VT_EFFORTS) &&
+           verifier.VerifyVector(efforts()) &&
+           verifier.EndTable();
+  }
+};
+
+struct JointStateBuilder {
+  typedef JointState Table;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_msg_type(robot_msg_fbs::RobotMsgType msg_type) {
+    fbb_.AddElement<uint16_t>(JointState::VT_MSG_TYPE, static_cast<uint16_t>(msg_type), 0);
+  }
+  void add_header(::flatbuffers::Offset<robot_msg_fbs::Header> header) {
+    fbb_.AddOffset(JointState::VT_HEADER, header);
+  }
+  void add_names(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>>> names) {
+    fbb_.AddOffset(JointState::VT_NAMES, names);
+  }
+  void add_positions(::flatbuffers::Offset<::flatbuffers::Vector<float>> positions) {
+    fbb_.AddOffset(JointState::VT_POSITIONS, positions);
+  }
+  void add_velocities(::flatbuffers::Offset<::flatbuffers::Vector<float>> velocities) {
+    fbb_.AddOffset(JointState::VT_VELOCITIES, velocities);
+  }
+  void add_efforts(::flatbuffers::Offset<::flatbuffers::Vector<float>> efforts) {
+    fbb_.AddOffset(JointState::VT_EFFORTS, efforts);
+  }
+  explicit JointStateBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  ::flatbuffers::Offset<JointState> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = ::flatbuffers::Offset<JointState>(end);
+    return o;
+  }
+};
+
+inline ::flatbuffers::Offset<JointState> CreateJointState(
     ::flatbuffers::FlatBufferBuilder &_fbb,
     robot_msg_fbs::RobotMsgType msg_type = robot_msg_fbs::RobotMsgType_UNKNOWN,
-    const char *frame_id = nullptr,
-    int64_t stamp_sec = 0,
-    int64_t stamp_nanosec = 0,
-    ::flatbuffers::Offset<robot_msg_fbs::Pose> pose = 0) {
-  auto frame_id__ = frame_id ? _fbb.CreateString(frame_id) : 0;
-  return robot_msg_fbs::CreatePoseStamped(
-      _fbb,
-      msg_type,
-      frame_id__,
-      stamp_sec,
-      stamp_nanosec,
-      pose);
+    ::flatbuffers::Offset<robot_msg_fbs::Header> header = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>>> names = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<float>> positions = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<float>> velocities = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<float>> efforts = 0) {
+  JointStateBuilder builder_(_fbb);
+  builder_.add_efforts(efforts);
+  builder_.add_velocities(velocities);
+  builder_.add_positions(positions);
+  builder_.add_names(names);
+  builder_.add_header(header);
+  builder_.add_msg_type(msg_type);
+  return builder_.Finish();
 }
 
-struct Robot2PcWrapper FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
-  typedef Robot2PcWrapperBuilder Builder;
+inline ::flatbuffers::Offset<JointState> CreateJointStateDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    robot_msg_fbs::RobotMsgType msg_type = robot_msg_fbs::RobotMsgType_UNKNOWN,
+    ::flatbuffers::Offset<robot_msg_fbs::Header> header = 0,
+    const std::vector<::flatbuffers::Offset<::flatbuffers::String>> *names = nullptr,
+    const std::vector<float> *positions = nullptr,
+    const std::vector<float> *velocities = nullptr,
+    const std::vector<float> *efforts = nullptr) {
+  auto names__ = names ? _fbb.CreateVector<::flatbuffers::Offset<::flatbuffers::String>>(*names) : 0;
+  auto positions__ = positions ? _fbb.CreateVector<float>(*positions) : 0;
+  auto velocities__ = velocities ? _fbb.CreateVector<float>(*velocities) : 0;
+  auto efforts__ = efforts ? _fbb.CreateVector<float>(*efforts) : 0;
+  return robot_msg_fbs::CreateJointState(
+      _fbb,
+      msg_type,
+      header,
+      names__,
+      positions__,
+      velocities__,
+      efforts__);
+}
+
+struct TeleopFrameRequest FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef TeleopFrameRequestBuilder Builder;
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_ACTION = 4
+  };
+  uint8_t action() const {
+    return GetField<uint8_t>(VT_ACTION, 0);
+  }
+  bool Verify(::flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<uint8_t>(verifier, VT_ACTION, 1) &&
+           verifier.EndTable();
+  }
+};
+
+struct TeleopFrameRequestBuilder {
+  typedef TeleopFrameRequest Table;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_action(uint8_t action) {
+    fbb_.AddElement<uint8_t>(TeleopFrameRequest::VT_ACTION, action, 0);
+  }
+  explicit TeleopFrameRequestBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  ::flatbuffers::Offset<TeleopFrameRequest> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = ::flatbuffers::Offset<TeleopFrameRequest>(end);
+    return o;
+  }
+};
+
+inline ::flatbuffers::Offset<TeleopFrameRequest> CreateTeleopFrameRequest(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    uint8_t action = 0) {
+  TeleopFrameRequestBuilder builder_(_fbb);
+  builder_.add_action(action);
+  return builder_.Finish();
+}
+
+struct TeleopFrameResponse FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef TeleopFrameResponseBuilder Builder;
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_SUCCESS = 4,
+    VT_MESSAGE = 6
+  };
+  bool success() const {
+    return GetField<uint8_t>(VT_SUCCESS, 0) != 0;
+  }
+  const ::flatbuffers::String *message() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_MESSAGE);
+  }
+  bool Verify(::flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<uint8_t>(verifier, VT_SUCCESS, 1) &&
+           VerifyOffset(verifier, VT_MESSAGE) &&
+           verifier.VerifyString(message()) &&
+           verifier.EndTable();
+  }
+};
+
+struct TeleopFrameResponseBuilder {
+  typedef TeleopFrameResponse Table;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_success(bool success) {
+    fbb_.AddElement<uint8_t>(TeleopFrameResponse::VT_SUCCESS, static_cast<uint8_t>(success), 0);
+  }
+  void add_message(::flatbuffers::Offset<::flatbuffers::String> message) {
+    fbb_.AddOffset(TeleopFrameResponse::VT_MESSAGE, message);
+  }
+  explicit TeleopFrameResponseBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  ::flatbuffers::Offset<TeleopFrameResponse> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = ::flatbuffers::Offset<TeleopFrameResponse>(end);
+    return o;
+  }
+};
+
+inline ::flatbuffers::Offset<TeleopFrameResponse> CreateTeleopFrameResponse(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    bool success = false,
+    ::flatbuffers::Offset<::flatbuffers::String> message = 0) {
+  TeleopFrameResponseBuilder builder_(_fbb);
+  builder_.add_message(message);
+  builder_.add_success(success);
+  return builder_.Finish();
+}
+
+inline ::flatbuffers::Offset<TeleopFrameResponse> CreateTeleopFrameResponseDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    bool success = false,
+    const char *message = nullptr) {
+  auto message__ = message ? _fbb.CreateString(message) : 0;
+  return robot_msg_fbs::CreateTeleopFrameResponse(
+      _fbb,
+      success,
+      message__);
+}
+
+struct TriggerRequest FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef TriggerRequestBuilder Builder;
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_DUMMY = 4
+  };
+  uint8_t dummy() const {
+    return GetField<uint8_t>(VT_DUMMY, 0);
+  }
+  bool Verify(::flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<uint8_t>(verifier, VT_DUMMY, 1) &&
+           verifier.EndTable();
+  }
+};
+
+struct TriggerRequestBuilder {
+  typedef TriggerRequest Table;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_dummy(uint8_t dummy) {
+    fbb_.AddElement<uint8_t>(TriggerRequest::VT_DUMMY, dummy, 0);
+  }
+  explicit TriggerRequestBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  ::flatbuffers::Offset<TriggerRequest> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = ::flatbuffers::Offset<TriggerRequest>(end);
+    return o;
+  }
+};
+
+inline ::flatbuffers::Offset<TriggerRequest> CreateTriggerRequest(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    uint8_t dummy = 0) {
+  TriggerRequestBuilder builder_(_fbb);
+  builder_.add_dummy(dummy);
+  return builder_.Finish();
+}
+
+struct TriggerResponse FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef TriggerResponseBuilder Builder;
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_SUCCESS = 4,
+    VT_MESSAGE = 6
+  };
+  bool success() const {
+    return GetField<uint8_t>(VT_SUCCESS, 0) != 0;
+  }
+  const ::flatbuffers::String *message() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_MESSAGE);
+  }
+  bool Verify(::flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<uint8_t>(verifier, VT_SUCCESS, 1) &&
+           VerifyOffset(verifier, VT_MESSAGE) &&
+           verifier.VerifyString(message()) &&
+           verifier.EndTable();
+  }
+};
+
+struct TriggerResponseBuilder {
+  typedef TriggerResponse Table;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_success(bool success) {
+    fbb_.AddElement<uint8_t>(TriggerResponse::VT_SUCCESS, static_cast<uint8_t>(success), 0);
+  }
+  void add_message(::flatbuffers::Offset<::flatbuffers::String> message) {
+    fbb_.AddOffset(TriggerResponse::VT_MESSAGE, message);
+  }
+  explicit TriggerResponseBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  ::flatbuffers::Offset<TriggerResponse> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = ::flatbuffers::Offset<TriggerResponse>(end);
+    return o;
+  }
+};
+
+inline ::flatbuffers::Offset<TriggerResponse> CreateTriggerResponse(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    bool success = false,
+    ::flatbuffers::Offset<::flatbuffers::String> message = 0) {
+  TriggerResponseBuilder builder_(_fbb);
+  builder_.add_message(message);
+  builder_.add_success(success);
+  return builder_.Finish();
+}
+
+inline ::flatbuffers::Offset<TriggerResponse> CreateTriggerResponseDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    bool success = false,
+    const char *message = nullptr) {
+  auto message__ = message ? _fbb.CreateString(message) : 0;
+  return robot_msg_fbs::CreateTriggerResponse(
+      _fbb,
+      success,
+      message__);
+}
+
+struct ServiceData FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef ServiceDataBuilder Builder;
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_REQ_ID = 4,
+    VT_TYPE = 6,
+    VT_TELEOP_REQ = 8,
+    VT_TELEOP_RESP = 10,
+    VT_TRIGGER_REQ = 12,
+    VT_TRIGGER_RESP = 14
+  };
+  uint64_t req_id() const {
+    return GetField<uint64_t>(VT_REQ_ID, 0);
+  }
+  robot_msg_fbs::ServiceType type() const {
+    return static_cast<robot_msg_fbs::ServiceType>(GetField<uint8_t>(VT_TYPE, 0));
+  }
+  const robot_msg_fbs::TeleopFrameRequest *teleop_req() const {
+    return GetPointer<const robot_msg_fbs::TeleopFrameRequest *>(VT_TELEOP_REQ);
+  }
+  const robot_msg_fbs::TeleopFrameResponse *teleop_resp() const {
+    return GetPointer<const robot_msg_fbs::TeleopFrameResponse *>(VT_TELEOP_RESP);
+  }
+  const robot_msg_fbs::TriggerRequest *trigger_req() const {
+    return GetPointer<const robot_msg_fbs::TriggerRequest *>(VT_TRIGGER_REQ);
+  }
+  const robot_msg_fbs::TriggerResponse *trigger_resp() const {
+    return GetPointer<const robot_msg_fbs::TriggerResponse *>(VT_TRIGGER_RESP);
+  }
+  bool Verify(::flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<uint64_t>(verifier, VT_REQ_ID, 8) &&
+           VerifyField<uint8_t>(verifier, VT_TYPE, 1) &&
+           VerifyOffset(verifier, VT_TELEOP_REQ) &&
+           verifier.VerifyTable(teleop_req()) &&
+           VerifyOffset(verifier, VT_TELEOP_RESP) &&
+           verifier.VerifyTable(teleop_resp()) &&
+           VerifyOffset(verifier, VT_TRIGGER_REQ) &&
+           verifier.VerifyTable(trigger_req()) &&
+           VerifyOffset(verifier, VT_TRIGGER_RESP) &&
+           verifier.VerifyTable(trigger_resp()) &&
+           verifier.EndTable();
+  }
+};
+
+struct ServiceDataBuilder {
+  typedef ServiceData Table;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_req_id(uint64_t req_id) {
+    fbb_.AddElement<uint64_t>(ServiceData::VT_REQ_ID, req_id, 0);
+  }
+  void add_type(robot_msg_fbs::ServiceType type) {
+    fbb_.AddElement<uint8_t>(ServiceData::VT_TYPE, static_cast<uint8_t>(type), 0);
+  }
+  void add_teleop_req(::flatbuffers::Offset<robot_msg_fbs::TeleopFrameRequest> teleop_req) {
+    fbb_.AddOffset(ServiceData::VT_TELEOP_REQ, teleop_req);
+  }
+  void add_teleop_resp(::flatbuffers::Offset<robot_msg_fbs::TeleopFrameResponse> teleop_resp) {
+    fbb_.AddOffset(ServiceData::VT_TELEOP_RESP, teleop_resp);
+  }
+  void add_trigger_req(::flatbuffers::Offset<robot_msg_fbs::TriggerRequest> trigger_req) {
+    fbb_.AddOffset(ServiceData::VT_TRIGGER_REQ, trigger_req);
+  }
+  void add_trigger_resp(::flatbuffers::Offset<robot_msg_fbs::TriggerResponse> trigger_resp) {
+    fbb_.AddOffset(ServiceData::VT_TRIGGER_RESP, trigger_resp);
+  }
+  explicit ServiceDataBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  ::flatbuffers::Offset<ServiceData> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = ::flatbuffers::Offset<ServiceData>(end);
+    return o;
+  }
+};
+
+inline ::flatbuffers::Offset<ServiceData> CreateServiceData(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    uint64_t req_id = 0,
+    robot_msg_fbs::ServiceType type = robot_msg_fbs::ServiceType_UNKNOWN_SRV,
+    ::flatbuffers::Offset<robot_msg_fbs::TeleopFrameRequest> teleop_req = 0,
+    ::flatbuffers::Offset<robot_msg_fbs::TeleopFrameResponse> teleop_resp = 0,
+    ::flatbuffers::Offset<robot_msg_fbs::TriggerRequest> trigger_req = 0,
+    ::flatbuffers::Offset<robot_msg_fbs::TriggerResponse> trigger_resp = 0) {
+  ServiceDataBuilder builder_(_fbb);
+  builder_.add_req_id(req_id);
+  builder_.add_trigger_resp(trigger_resp);
+  builder_.add_trigger_req(trigger_req);
+  builder_.add_teleop_resp(teleop_resp);
+  builder_.add_teleop_req(teleop_req);
+  builder_.add_type(type);
+  return builder_.Finish();
+}
+
+struct CommWrapper FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef CommWrapperBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_MSG_TYPE = 4,
     VT_MSG = 6
   };
-  robot_msg_fbs::Robot2PcMsg msg_type() const {
-    return static_cast<robot_msg_fbs::Robot2PcMsg>(GetField<uint8_t>(VT_MSG_TYPE, 0));
+  robot_msg_fbs::AnyMsg msg_type() const {
+    return static_cast<robot_msg_fbs::AnyMsg>(GetField<uint8_t>(VT_MSG_TYPE, 0));
   }
   const void *msg() const {
     return GetPointer<const void *>(VT_MSG);
   }
   template<typename T> const T *msg_as() const;
   const robot_msg_fbs::JointState *msg_as_JointState() const {
-    return msg_type() == robot_msg_fbs::Robot2PcMsg_JointState ? static_cast<const robot_msg_fbs::JointState *>(msg()) : nullptr;
+    return msg_type() == robot_msg_fbs::AnyMsg_JointState ? static_cast<const robot_msg_fbs::JointState *>(msg()) : nullptr;
   }
   const robot_msg_fbs::PoseStamped *msg_as_PoseStamped() const {
-    return msg_type() == robot_msg_fbs::Robot2PcMsg_PoseStamped ? static_cast<const robot_msg_fbs::PoseStamped *>(msg()) : nullptr;
+    return msg_type() == robot_msg_fbs::AnyMsg_PoseStamped ? static_cast<const robot_msg_fbs::PoseStamped *>(msg()) : nullptr;
   }
   const robot_msg_fbs::TwistStamped *msg_as_TwistStamped() const {
-    return msg_type() == robot_msg_fbs::Robot2PcMsg_TwistStamped ? static_cast<const robot_msg_fbs::TwistStamped *>(msg()) : nullptr;
+    return msg_type() == robot_msg_fbs::AnyMsg_TwistStamped ? static_cast<const robot_msg_fbs::TwistStamped *>(msg()) : nullptr;
   }
   const robot_msg_fbs::MotorControl *msg_as_MotorControl() const {
-    return msg_type() == robot_msg_fbs::Robot2PcMsg_MotorControl ? static_cast<const robot_msg_fbs::MotorControl *>(msg()) : nullptr;
+    return msg_type() == robot_msg_fbs::AnyMsg_MotorControl ? static_cast<const robot_msg_fbs::MotorControl *>(msg()) : nullptr;
+  }
+  const robot_msg_fbs::ServiceData *msg_as_ServiceData() const {
+    return msg_type() == robot_msg_fbs::AnyMsg_ServiceData ? static_cast<const robot_msg_fbs::ServiceData *>(msg()) : nullptr;
   }
   bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<uint8_t>(verifier, VT_MSG_TYPE, 1) &&
            VerifyOffset(verifier, VT_MSG) &&
-           VerifyRobot2PcMsg(verifier, msg(), msg_type()) &&
+           VerifyAnyMsg(verifier, msg(), msg_type()) &&
            verifier.EndTable();
   }
 };
 
-template<> inline const robot_msg_fbs::JointState *Robot2PcWrapper::msg_as<robot_msg_fbs::JointState>() const {
+template<> inline const robot_msg_fbs::JointState *CommWrapper::msg_as<robot_msg_fbs::JointState>() const {
   return msg_as_JointState();
 }
 
-template<> inline const robot_msg_fbs::PoseStamped *Robot2PcWrapper::msg_as<robot_msg_fbs::PoseStamped>() const {
+template<> inline const robot_msg_fbs::PoseStamped *CommWrapper::msg_as<robot_msg_fbs::PoseStamped>() const {
   return msg_as_PoseStamped();
 }
 
-template<> inline const robot_msg_fbs::TwistStamped *Robot2PcWrapper::msg_as<robot_msg_fbs::TwistStamped>() const {
+template<> inline const robot_msg_fbs::TwistStamped *CommWrapper::msg_as<robot_msg_fbs::TwistStamped>() const {
   return msg_as_TwistStamped();
 }
 
-template<> inline const robot_msg_fbs::MotorControl *Robot2PcWrapper::msg_as<robot_msg_fbs::MotorControl>() const {
+template<> inline const robot_msg_fbs::MotorControl *CommWrapper::msg_as<robot_msg_fbs::MotorControl>() const {
   return msg_as_MotorControl();
 }
 
-struct Robot2PcWrapperBuilder {
-  typedef Robot2PcWrapper Table;
+template<> inline const robot_msg_fbs::ServiceData *CommWrapper::msg_as<robot_msg_fbs::ServiceData>() const {
+  return msg_as_ServiceData();
+}
+
+struct CommWrapperBuilder {
+  typedef CommWrapper Table;
   ::flatbuffers::FlatBufferBuilder &fbb_;
   ::flatbuffers::uoffset_t start_;
-  void add_msg_type(robot_msg_fbs::Robot2PcMsg msg_type) {
-    fbb_.AddElement<uint8_t>(Robot2PcWrapper::VT_MSG_TYPE, static_cast<uint8_t>(msg_type), 0);
+  void add_msg_type(robot_msg_fbs::AnyMsg msg_type) {
+    fbb_.AddElement<uint8_t>(CommWrapper::VT_MSG_TYPE, static_cast<uint8_t>(msg_type), 0);
   }
   void add_msg(::flatbuffers::Offset<void> msg) {
-    fbb_.AddOffset(Robot2PcWrapper::VT_MSG, msg);
+    fbb_.AddOffset(CommWrapper::VT_MSG, msg);
   }
-  explicit Robot2PcWrapperBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+  explicit CommWrapperBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  ::flatbuffers::Offset<Robot2PcWrapper> Finish() {
+  ::flatbuffers::Offset<CommWrapper> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = ::flatbuffers::Offset<Robot2PcWrapper>(end);
+    auto o = ::flatbuffers::Offset<CommWrapper>(end);
     return o;
   }
 };
 
-inline ::flatbuffers::Offset<Robot2PcWrapper> CreateRobot2PcWrapper(
+inline ::flatbuffers::Offset<CommWrapper> CreateCommWrapper(
     ::flatbuffers::FlatBufferBuilder &_fbb,
-    robot_msg_fbs::Robot2PcMsg msg_type = robot_msg_fbs::Robot2PcMsg_NONE,
+    robot_msg_fbs::AnyMsg msg_type = robot_msg_fbs::AnyMsg_NONE,
     ::flatbuffers::Offset<void> msg = 0) {
-  Robot2PcWrapperBuilder builder_(_fbb);
+  CommWrapperBuilder builder_(_fbb);
   builder_.add_msg(msg);
   builder_.add_msg_type(msg_type);
   return builder_.Finish();
 }
 
-inline bool VerifyRobot2PcMsg(::flatbuffers::Verifier &verifier, const void *obj, Robot2PcMsg type) {
+inline bool VerifyAnyMsg(::flatbuffers::Verifier &verifier, const void *obj, AnyMsg type) {
   switch (type) {
-    case Robot2PcMsg_NONE: {
+    case AnyMsg_NONE: {
       return true;
     }
-    case Robot2PcMsg_JointState: {
+    case AnyMsg_JointState: {
       auto ptr = reinterpret_cast<const robot_msg_fbs::JointState *>(obj);
       return verifier.VerifyTable(ptr);
     }
-    case Robot2PcMsg_PoseStamped: {
+    case AnyMsg_PoseStamped: {
       auto ptr = reinterpret_cast<const robot_msg_fbs::PoseStamped *>(obj);
       return verifier.VerifyTable(ptr);
     }
-    case Robot2PcMsg_TwistStamped: {
+    case AnyMsg_TwistStamped: {
       auto ptr = reinterpret_cast<const robot_msg_fbs::TwistStamped *>(obj);
       return verifier.VerifyTable(ptr);
     }
-    case Robot2PcMsg_MotorControl: {
+    case AnyMsg_MotorControl: {
       auto ptr = reinterpret_cast<const robot_msg_fbs::MotorControl *>(obj);
+      return verifier.VerifyTable(ptr);
+    }
+    case AnyMsg_ServiceData: {
+      auto ptr = reinterpret_cast<const robot_msg_fbs::ServiceData *>(obj);
       return verifier.VerifyTable(ptr);
     }
     default: return true;
   }
 }
 
-inline bool VerifyRobot2PcMsgVector(::flatbuffers::Verifier &verifier, const ::flatbuffers::Vector<::flatbuffers::Offset<void>> *values, const ::flatbuffers::Vector<uint8_t> *types) {
+inline bool VerifyAnyMsgVector(::flatbuffers::Verifier &verifier, const ::flatbuffers::Vector<::flatbuffers::Offset<void>> *values, const ::flatbuffers::Vector<uint8_t> *types) {
   if (!values || !types) return !values && !types;
   if (values->size() != types->size()) return false;
   for (::flatbuffers::uoffset_t i = 0; i < values->size(); ++i) {
-    if (!VerifyRobot2PcMsg(
-        verifier,  values->Get(i), types->GetEnum<Robot2PcMsg>(i))) {
+    if (!VerifyAnyMsg(
+        verifier,  values->Get(i), types->GetEnum<AnyMsg>(i))) {
       return false;
     }
   }
   return true;
 }
 
-inline const robot_msg_fbs::Robot2PcWrapper *GetRobot2PcWrapper(const void *buf) {
-  return ::flatbuffers::GetRoot<robot_msg_fbs::Robot2PcWrapper>(buf);
+inline const robot_msg_fbs::CommWrapper *GetCommWrapper(const void *buf) {
+  return ::flatbuffers::GetRoot<robot_msg_fbs::CommWrapper>(buf);
 }
 
-inline const robot_msg_fbs::Robot2PcWrapper *GetSizePrefixedRobot2PcWrapper(const void *buf) {
-  return ::flatbuffers::GetSizePrefixedRoot<robot_msg_fbs::Robot2PcWrapper>(buf);
+inline const robot_msg_fbs::CommWrapper *GetSizePrefixedCommWrapper(const void *buf) {
+  return ::flatbuffers::GetSizePrefixedRoot<robot_msg_fbs::CommWrapper>(buf);
 }
 
-inline bool VerifyRobot2PcWrapperBuffer(
+inline bool VerifyCommWrapperBuffer(
     ::flatbuffers::Verifier &verifier) {
-  return verifier.VerifyBuffer<robot_msg_fbs::Robot2PcWrapper>(nullptr);
+  return verifier.VerifyBuffer<robot_msg_fbs::CommWrapper>(nullptr);
 }
 
-inline bool VerifySizePrefixedRobot2PcWrapperBuffer(
+inline bool VerifySizePrefixedCommWrapperBuffer(
     ::flatbuffers::Verifier &verifier) {
-  return verifier.VerifySizePrefixedBuffer<robot_msg_fbs::Robot2PcWrapper>(nullptr);
+  return verifier.VerifySizePrefixedBuffer<robot_msg_fbs::CommWrapper>(nullptr);
 }
 
-inline void FinishRobot2PcWrapperBuffer(
+inline void FinishCommWrapperBuffer(
     ::flatbuffers::FlatBufferBuilder &fbb,
-    ::flatbuffers::Offset<robot_msg_fbs::Robot2PcWrapper> root) {
+    ::flatbuffers::Offset<robot_msg_fbs::CommWrapper> root) {
   fbb.Finish(root);
 }
 
-inline void FinishSizePrefixedRobot2PcWrapperBuffer(
+inline void FinishSizePrefixedCommWrapperBuffer(
     ::flatbuffers::FlatBufferBuilder &fbb,
-    ::flatbuffers::Offset<robot_msg_fbs::Robot2PcWrapper> root) {
+    ::flatbuffers::Offset<robot_msg_fbs::CommWrapper> root) {
   fbb.FinishSizePrefixed(root);
 }
 
