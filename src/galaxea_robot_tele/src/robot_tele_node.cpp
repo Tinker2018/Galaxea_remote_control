@@ -4,7 +4,13 @@
 
 namespace galaxea_robot_tele {
 
-RobotTeleNode::RobotTeleNode() : Node("robot_tele_node"), is_running_(true)  {
+RobotTeleNode::RobotTeleNode() 
+    : Node("robot_tele_node"), 
+      is_running_(true),
+      stats_topic_recv_count_(0),
+      stats_topic_send_count_(0),
+      stats_srv_count_(0) {
+    
     std::string config_path = ament_index_cpp::get_package_share_directory("galaxea_robot_tele") + "/config/udp_config.yaml";
     try {
         udp_config_ = UDPSocket::load_config(config_path);
@@ -16,27 +22,56 @@ RobotTeleNode::RobotTeleNode() : Node("robot_tele_node"), is_running_(true)  {
         return;
     }
 
+    // --- 关键修改：创建多线程回调组 ---
+    // 这样高频率的 JointState 数据可以并行处理，不会被某个慢的任务卡住
+    cb_group_reentrant_ = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
+    auto sub_opt = rclcpp::SubscriptionOptions();
+    sub_opt.callback_group = cb_group_reentrant_;
+
+    // 初始化统计定时器 (2秒一次)
+    timer_ = this->create_wall_timer(
+        std::chrono::seconds(2),
+        std::bind(&RobotTeleNode::timer_callback, this),
+        cb_group_reentrant_); // 定时器也放进组里，保证准时
+
     // 1. 订阅 (Robot -> PC)
+    // 注意：把 sub_opt 传进去，让它们使用多线程组
     sub_feedback_arm_left_ = this->create_subscription<sensor_msgs::msg::JointState>(
-        "/hdas/feedback_arm_left", 10, [this](const sensor_msgs::msg::JointState::SharedPtr msg) { this->send_joint_state(robot_msg_fbs::RobotMsgType_FEEDBACK_ARM_LEFT, *msg); });
+        "/hdas/feedback_arm_left", 10, 
+        [this](const sensor_msgs::msg::JointState::SharedPtr msg) { this->send_joint_state(robot_msg_fbs::RobotMsgType_FEEDBACK_ARM_LEFT, *msg); }, sub_opt);
+    
     sub_feedback_arm_right_ = this->create_subscription<sensor_msgs::msg::JointState>(
-        "/hdas/feedback_arm_right", 10, [this](const sensor_msgs::msg::JointState::SharedPtr msg) { this->send_joint_state(robot_msg_fbs::RobotMsgType_FEEDBACK_ARM_RIGHT, *msg); });
+        "/hdas/feedback_arm_right", 10, 
+        [this](const sensor_msgs::msg::JointState::SharedPtr msg) { this->send_joint_state(robot_msg_fbs::RobotMsgType_FEEDBACK_ARM_RIGHT, *msg); }, sub_opt);
+    
     sub_feedback_gripper_left_ = this->create_subscription<sensor_msgs::msg::JointState>(
-        "/hdas/feedback_gripper_left", 10, [this](const sensor_msgs::msg::JointState::SharedPtr msg) { this->send_joint_state(robot_msg_fbs::RobotMsgType_FEEDBACK_GRIPPER_LEFT, *msg); });
+        "/hdas/feedback_gripper_left", 10, 
+        [this](const sensor_msgs::msg::JointState::SharedPtr msg) { this->send_joint_state(robot_msg_fbs::RobotMsgType_FEEDBACK_GRIPPER_LEFT, *msg); }, sub_opt);
+    
     sub_feedback_gripper_right_ = this->create_subscription<sensor_msgs::msg::JointState>(
-        "/hdas/feedback_gripper_right", 10, [this](const sensor_msgs::msg::JointState::SharedPtr msg) { this->send_joint_state(robot_msg_fbs::RobotMsgType_FEEDBACK_GRIPPER_RIGHT, *msg); });
+        "/hdas/feedback_gripper_right", 10, 
+        [this](const sensor_msgs::msg::JointState::SharedPtr msg) { this->send_joint_state(robot_msg_fbs::RobotMsgType_FEEDBACK_GRIPPER_RIGHT, *msg); }, sub_opt);
 
     sub_pose_ee_arm_left_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-        "/motion_control/pose_ee_arm_left", 10, [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) { this->send_pose_stamped(robot_msg_fbs::RobotMsgType_POSE_EE_LEFT_ARM, *msg); });
+        "/motion_control/pose_ee_arm_left", 10, 
+        [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) { this->send_pose_stamped(robot_msg_fbs::RobotMsgType_POSE_EE_LEFT_ARM, *msg); }, sub_opt);
+    
     sub_pose_ee_arm_right_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-        "/motion_control/pose_ee_arm_right", 10, [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) { this->send_pose_stamped(robot_msg_fbs::RobotMsgType_POSE_EE_RIGHT_ARM, *msg); });
+        "/motion_control/pose_ee_arm_right", 10, 
+        [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) { this->send_pose_stamped(robot_msg_fbs::RobotMsgType_POSE_EE_RIGHT_ARM, *msg); }, sub_opt);
 
-    auto sub_opt = rclcpp::SubscriptionOptions();
-    sub_opt.ignore_local_publications = true;
+    // 对于需要忽略本地发布的话题，我们再加一个配置
+    auto sub_opt_ignore = rclcpp::SubscriptionOptions();
+    sub_opt_ignore.ignore_local_publications = true;
+    sub_opt_ignore.callback_group = cb_group_reentrant_; // 同样加入多线程组
+
     sub_target_pose_arm_left_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-        "/motion_target/target_pose_arm_left", 10, [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) { this->send_pose_stamped(robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_LEFT, *msg); }, sub_opt);
+        "/motion_target/target_pose_arm_left", 10, 
+        [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) { this->send_pose_stamped(robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_LEFT, *msg); }, sub_opt_ignore);
+    
     sub_target_pose_arm_right_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-        "/motion_target/target_pose_arm_right", 10, [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) { this->send_pose_stamped(robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_RIGHT, *msg); }, sub_opt);
+        "/motion_target/target_pose_arm_right", 10, 
+        [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) { this->send_pose_stamped(robot_msg_fbs::RobotMsgType_TARGET_POSE_ARM_RIGHT, *msg); }, sub_opt_ignore);
 
 
     // 2. 发布者 (PC -> Robot)
@@ -47,16 +82,17 @@ RobotTeleNode::RobotTeleNode() : Node("robot_tele_node"), is_running_(true)  {
     pub_target_pose_arm_left_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_target/target_pose_arm_left", 10);
     pub_target_pose_arm_right_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_target/target_pose_arm_right", 10);
     
-    pub_target_speed_chassis_ = this->create_publisher<geometry_msgs::msg::TwistStamped>("/motion_control/target_speed_chassis", 10);
-    pub_target_speed_torso_ = this->create_publisher<geometry_msgs::msg::TwistStamped>("/motion_control/target_speed_torso", 10);
+    pub_target_speed_chassis_ = this->create_publisher<geometry_msgs::msg::TwistStamped>("/motion_target/target_speed_chassis", 10);
+    pub_target_speed_torso_ = this->create_publisher<geometry_msgs::msg::TwistStamped>("/motion_target/target_speed_torso", 10);
     
     pub_control_arm_left_ = this->create_publisher<hdas_msg::msg::MotorControl>("/motion_control/control_arm_left", 10);
     pub_control_arm_right_ = this->create_publisher<hdas_msg::msg::MotorControl>("/motion_control/control_arm_right", 10);
 
-    // 3. 客户端 (Robot 去调用本地服务)
-    cli_teleop_ = this->create_client<system_manager_msg::srv::TeleopFrame>("/system_manager/teleop/service");
-    cli_start_data_ = this->create_client<std_srvs::srv::Trigger>("/start_data_collection"); // 新增
-    cli_stop_data_ = this->create_client<std_srvs::srv::Trigger>("/stop_data_collection");   // 新增
+    // 3. 客户端
+    // 客户端也可以绑定到组里，不过 async_send_request 的回调默认会用 executor 里的空闲线程
+    cli_teleop_ = this->create_client<system_manager_msg::srv::TeleopFrame>("/system_manager/teleop/service", rmw_qos_profile_services_default, cb_group_reentrant_);
+    cli_start_data_ = this->create_client<std_srvs::srv::Trigger>("/start_data_collection", rmw_qos_profile_services_default, cb_group_reentrant_);
+    cli_stop_data_ = this->create_client<std_srvs::srv::Trigger>("/stop_data_collection", rmw_qos_profile_services_default, cb_group_reentrant_);
 
     RCLCPP_INFO(this->get_logger(), "Robot initialized");
     recv_thread_ = std::thread(&RobotTeleNode::recv_loop, this);
@@ -67,6 +103,16 @@ RobotTeleNode::~RobotTeleNode() {
     if (recv_thread_.joinable()) {
         recv_thread_.join();
     }
+}
+
+void RobotTeleNode::timer_callback() {
+    uint64_t tx = stats_topic_send_count_.exchange(0);
+    uint64_t rx = stats_topic_recv_count_.exchange(0);
+    uint64_t srv = stats_srv_count_.exchange(0);
+    
+    RCLCPP_INFO(this->get_logger(), 
+        "[Stats 2s] TX Topics: %lu | RX Topics: %lu | Service Exec: %lu", 
+        tx, rx, srv);
 }
 
 void RobotTeleNode::recv_loop() {
@@ -84,7 +130,6 @@ void RobotTeleNode::recv_loop() {
         if (!wrapper) continue;
 
         switch (wrapper->msg_type()) {
-            // ... (其他 Topic 消息保持不变) ...
             case robot_msg_fbs::AnyMsg_JointState: {
                 auto js = wrapper->msg_as_JointState();
                 if (!js) break;
@@ -133,8 +178,9 @@ void RobotTeleNode::recv_loop() {
                 auto srv = wrapper->msg_as_ServiceData();
                 if (!srv) break;
                 uint64_t req_id = srv->req_id();
+                
+                stats_srv_count_++; 
 
-                // 1. Teleop Frame 请求
                 if (srv->type() == robot_msg_fbs::ServiceType_REQ_TELEOP_FRAME) {
                     auto req = std::make_shared<system_manager_msg::srv::TeleopFrame::Request>();
                     FlatbufferUtils::decode_teleop_req(srv, *req);
@@ -150,18 +196,13 @@ void RobotTeleNode::recv_loop() {
                             });
                     }
                 }
-                
-                // 2. Start Data 请求 (新增)
                 else if (srv->type() == robot_msg_fbs::ServiceType_REQ_START_DATA) {
                     auto req = std::make_shared<std_srvs::srv::Trigger::Request>();
-                    // Trigger request是空的，不需要decode
-
                     if (cli_start_data_->service_is_ready()) {
                         cli_start_data_->async_send_request(req, 
                             [this, req_id](rclcpp::Client<std_srvs::srv::Trigger>::SharedFuture future) {
                                 auto response = future.get();
                                 flatbuffers::FlatBufferBuilder builder(1024);
-                                // 注意填入 RESP_START_DATA
                                 auto wrapper = FlatbufferUtils::encode_trigger_resp(
                                     builder, req_id, robot_msg_fbs::ServiceType_RESP_START_DATA, *response);
                                 robot_msg_fbs::FinishCommWrapperBuffer(builder, wrapper);
@@ -171,17 +212,13 @@ void RobotTeleNode::recv_loop() {
                         RCLCPP_WARN(this->get_logger(), "Start Data service not ready!");
                     }
                 }
-                
-                // 3. Stop Data 请求 (新增)
                 else if (srv->type() == robot_msg_fbs::ServiceType_REQ_STOP_DATA) {
                     auto req = std::make_shared<std_srvs::srv::Trigger::Request>();
-
                     if (cli_stop_data_->service_is_ready()) {
                         cli_stop_data_->async_send_request(req, 
                             [this, req_id](rclcpp::Client<std_srvs::srv::Trigger>::SharedFuture future) {
                                 auto response = future.get();
                                 flatbuffers::FlatBufferBuilder builder(1024);
-                                // 注意填入 RESP_STOP_DATA
                                 auto wrapper = FlatbufferUtils::encode_trigger_resp(
                                     builder, req_id, robot_msg_fbs::ServiceType_RESP_STOP_DATA, *response);
                                 robot_msg_fbs::FinishCommWrapperBuffer(builder, wrapper);
@@ -198,32 +235,36 @@ void RobotTeleNode::recv_loop() {
     }
 }
 
-// 辅助函数保持不变...
 void RobotTeleNode::parse_joint_state(const robot_msg_fbs::JointState* fb_msg, rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr publisher) {
+    stats_topic_recv_count_++;
     sensor_msgs::msg::JointState ros_msg;
     FlatbufferUtils::decode_joint_state(fb_msg, ros_msg);
     publisher->publish(ros_msg);
 }
 
 void RobotTeleNode::parse_pose_stamped(const robot_msg_fbs::PoseStamped* fb_msg, rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher) {
+    stats_topic_recv_count_++;
     geometry_msgs::msg::PoseStamped ros_msg;
     FlatbufferUtils::decode_pose_stamped(fb_msg, ros_msg);
     publisher->publish(ros_msg);
 }
 
 void RobotTeleNode::parse_twist_stamped(const robot_msg_fbs::TwistStamped* fb_msg, rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr publisher) {
+    stats_topic_recv_count_++;
     geometry_msgs::msg::TwistStamped ros_msg;
     FlatbufferUtils::decode_twist_stamped(fb_msg, ros_msg);
     publisher->publish(ros_msg);
 }
 
 void RobotTeleNode::parse_motor_control(const robot_msg_fbs::MotorControl* fb_msg, rclcpp::Publisher<hdas_msg::msg::MotorControl>::SharedPtr publisher) {
+    stats_topic_recv_count_++;
     hdas_msg::msg::MotorControl ros_msg;
     FlatbufferUtils::decode_motor_control(fb_msg, ros_msg);
     publisher->publish(ros_msg);
 }
 
 void RobotTeleNode::send_joint_state(robot_msg_fbs::RobotMsgType msg_type, const sensor_msgs::msg::JointState& msg) {
+    stats_topic_send_count_++;
     flatbuffers::FlatBufferBuilder builder(1024);
     auto wrapper = FlatbufferUtils::encode_joint_state(builder, msg_type, msg);
     robot_msg_fbs::FinishCommWrapperBuffer(builder, wrapper);
@@ -231,6 +272,7 @@ void RobotTeleNode::send_joint_state(robot_msg_fbs::RobotMsgType msg_type, const
 }
 
 void RobotTeleNode::send_pose_stamped(robot_msg_fbs::RobotMsgType msg_type, const geometry_msgs::msg::PoseStamped& msg) {
+    stats_topic_send_count_++;
     flatbuffers::FlatBufferBuilder builder(1024);
     auto wrapper = FlatbufferUtils::encode_pose_stamped(builder, msg_type, msg);
     robot_msg_fbs::FinishCommWrapperBuffer(builder, wrapper);
@@ -241,7 +283,11 @@ void RobotTeleNode::send_pose_stamped(robot_msg_fbs::RobotMsgType msg_type, cons
 
 int main(int argc, char* argv[]) {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<galaxea_robot_tele::RobotTeleNode>());
+    // 关键修改：使用多线程执行器
+    rclcpp::executors::MultiThreadedExecutor executor;
+    auto node = std::make_shared<galaxea_robot_tele::RobotTeleNode>();
+    executor.add_node(node);
+    executor.spin();
     rclcpp::shutdown();
     return 0;
 }

@@ -9,7 +9,7 @@
 #include "geometry_msgs/msg/twist_stamped.hpp"
 #include "hdas_msg/msg/motor_control.hpp"
 #include "system_manager_msg/srv/teleop_frame.hpp"
-#include "std_srvs/srv/trigger.hpp" // 新增
+#include "std_srvs/srv/trigger.hpp"
 #include <atomic>
 #include <memory>
 #include <thread>
@@ -26,6 +26,8 @@ public:
 
 private:
     void recv_loop();
+    void timer_callback();
+
     void send_joint_state(robot_msg_fbs::RobotMsgType msg_type, const sensor_msgs::msg::JointState& msg);
     void send_pose_stamped(robot_msg_fbs::RobotMsgType msg_type, const geometry_msgs::msg::PoseStamped& msg);
     void send_twist_stamped(robot_msg_fbs::RobotMsgType msg_type, const geometry_msgs::msg::TwistStamped& msg);
@@ -38,6 +40,15 @@ private:
     UDPConfig udp_config_;
     std::thread recv_thread_;
     std::atomic<bool> is_running_;
+    
+    // 多线程回调组 (关键修改)
+    rclcpp::CallbackGroup::SharedPtr cb_group_services_;
+
+    // 统计相关
+    rclcpp::TimerBase::SharedPtr timer_;
+    std::atomic<uint64_t> stats_topic_recv_count_; 
+    std::atomic<uint64_t> stats_topic_send_count_; 
+    std::atomic<uint64_t> stats_srv_count_;        
     
     // Subscriptions
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_target_joint_state_arm_left_;
@@ -63,15 +74,15 @@ private:
 
     // Services
     rclcpp::Service<system_manager_msg::srv::TeleopFrame>::SharedPtr srv_server_teleop_;
-    rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr srv_server_start_data_; // 新增
-    rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr srv_server_stop_data_;  // 新增
+    rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr srv_server_start_data_;
+    rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr srv_server_stop_data_;
     
     // Async Request Management
     std::atomic<uint64_t> req_id_counter_;
     std::mutex srv_map_mutex_;
     std::map<uint64_t, std::shared_ptr<std::promise<system_manager_msg::srv::TeleopFrame::Response>>> pending_teleop_reqs_;
-    std::map<uint64_t, std::shared_ptr<std::promise<std_srvs::srv::Trigger::Response>>> pending_start_reqs_; // 新增
-    std::map<uint64_t, std::shared_ptr<std::promise<std_srvs::srv::Trigger::Response>>> pending_stop_reqs_;  // 新增
+    std::map<uint64_t, std::shared_ptr<std::promise<std_srvs::srv::Trigger::Response>>> pending_start_reqs_;
+    std::map<uint64_t, std::shared_ptr<std::promise<std_srvs::srv::Trigger::Response>>> pending_stop_reqs_;
 };
 
 }  // namespace galaxea_robot_tele

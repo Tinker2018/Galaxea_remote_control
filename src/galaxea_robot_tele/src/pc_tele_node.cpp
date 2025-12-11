@@ -4,7 +4,14 @@
 
 namespace galaxea_robot_tele {
 
-PCTeleNode::PCTeleNode() : Node("pc_tele_node"), is_running_(true), req_id_counter_(0) {
+PCTeleNode::PCTeleNode() 
+    : Node("pc_tele_node"), 
+      is_running_(true), 
+      stats_topic_recv_count_(0),
+      stats_topic_send_count_(0),
+      stats_srv_count_(0),
+      req_id_counter_(0) {
+    
     // 1. 加载配置
     std::string config_path = ament_index_cpp::get_package_share_directory("galaxea_robot_tele") + "/config/udp_config.yaml";
     try {
@@ -17,7 +24,15 @@ PCTeleNode::PCTeleNode() : Node("pc_tele_node"), is_running_(true), req_id_count
         return;
     }
 
-    // 2. 订阅 (PC -> Robot)
+    // --- 关键修改：创建多线程回调组 ---
+    cb_group_services_ = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
+
+    // 2. 初始化统计定时器 (2秒一次)
+    timer_ = this->create_wall_timer(
+        std::chrono::seconds(2),
+        std::bind(&PCTeleNode::timer_callback, this));
+
+    // 3. 订阅 (PC -> Robot)
     auto sub_opt = rclcpp::SubscriptionOptions();
     sub_opt.ignore_local_publications = true;
 
@@ -55,7 +70,7 @@ PCTeleNode::PCTeleNode() : Node("pc_tele_node"), is_running_(true), req_id_count
         "/motion_control/control_arm_right", 10,
         [this](const hdas_msg::msg::MotorControl::SharedPtr msg) { this->send_motor_control(robot_msg_fbs::RobotMsgType_CONTROL_ARM_RIGHT, *msg); });
 
-    // 3. 发布者 (Robot -> PC)
+    // 4. 发布者 (Robot -> PC)
     pub_left_arm_joint_ = this->create_publisher<sensor_msgs::msg::JointState>("/hdas/feedback_arm_left", 10);
     pub_right_arm_joint_ = this->create_publisher<sensor_msgs::msg::JointState>("/hdas/feedback_arm_right", 10);
     pub_left_gripper_joint_ = this->create_publisher<sensor_msgs::msg::JointState>("/hdas/feedback_gripper_left", 10);
@@ -65,7 +80,7 @@ PCTeleNode::PCTeleNode() : Node("pc_tele_node"), is_running_(true), req_id_count
     pub_target_pose_arm_left_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_target/target_pose_arm_left", 10);
     pub_target_pose_arm_right_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_target/target_pose_arm_right", 10);
 
-    // 4. 服务端 (PC 伪装成 Server)
+    // 5. 服务端 (PC 伪装成 Server) - 关键修改：绑定到多线程回调组
 
     // (1) Teleop Frame
     srv_server_teleop_ = this->create_service<system_manager_msg::srv::TeleopFrame>(
@@ -73,6 +88,7 @@ PCTeleNode::PCTeleNode() : Node("pc_tele_node"), is_running_(true), req_id_count
         [this](const std::shared_ptr<system_manager_msg::srv::TeleopFrame::Request> request,
                std::shared_ptr<system_manager_msg::srv::TeleopFrame::Response> response) {
             
+            stats_srv_count_++;
             uint64_t req_id = ++req_id_counter_;
             auto promise = std::make_shared<std::promise<system_manager_msg::srv::TeleopFrame::Response>>();
             auto future = promise->get_future();
@@ -94,14 +110,17 @@ PCTeleNode::PCTeleNode() : Node("pc_tele_node"), is_running_(true), req_id_count
                 std::lock_guard<std::mutex> lock(srv_map_mutex_);
                 pending_teleop_reqs_.erase(req_id);
             }
-        });
+        },
+        rmw_qos_profile_services_default,
+        cb_group_services_); // <--- 这里加了组
 
-    // (2) Start Data Collection (新增)
+    // (2) Start Data Collection
     srv_server_start_data_ = this->create_service<std_srvs::srv::Trigger>(
         "/start_data_collection",
         [this](const std::shared_ptr<std_srvs::srv::Trigger::Request> /*request*/,
                std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
             
+            stats_srv_count_++;
             uint64_t req_id = ++req_id_counter_;
             auto promise = std::make_shared<std::promise<std_srvs::srv::Trigger::Response>>();
             auto future = promise->get_future();
@@ -109,13 +128,13 @@ PCTeleNode::PCTeleNode() : Node("pc_tele_node"), is_running_(true), req_id_count
                 std::lock_guard<std::mutex> lock(srv_map_mutex_);
                 pending_start_reqs_[req_id] = promise;
             }
-            // 发送类型：REQ_START_DATA
             flatbuffers::FlatBufferBuilder builder(1024);
             auto wrapper = FlatbufferUtils::encode_trigger_req(builder, req_id, robot_msg_fbs::ServiceType_REQ_START_DATA);
             robot_msg_fbs::FinishCommWrapperBuffer(builder, wrapper);
             udp_socket_->send(builder.GetBufferPointer(), builder.GetSize());
 
-            if (future.wait_for(std::chrono::seconds(2)) == std::future_status::ready) {
+            // 奶奶，这里即使等待，因为是多线程，也不会卡住 Topic 转发了
+            if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
                 *response = future.get();
             } else {
                 RCLCPP_ERROR(this->get_logger(), "StartData Service timeout!");
@@ -124,14 +143,17 @@ PCTeleNode::PCTeleNode() : Node("pc_tele_node"), is_running_(true), req_id_count
                 std::lock_guard<std::mutex> lock(srv_map_mutex_);
                 pending_start_reqs_.erase(req_id);
             }
-        });
+        },
+        rmw_qos_profile_services_default,
+        cb_group_services_); // <--- 这里加了组
 
-    // (3) Stop Data Collection (新增)
+    // (3) Stop Data Collection
     srv_server_stop_data_ = this->create_service<std_srvs::srv::Trigger>(
         "/stop_data_collection",
         [this](const std::shared_ptr<std_srvs::srv::Trigger::Request> /*request*/,
                std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
             
+            stats_srv_count_++;
             uint64_t req_id = ++req_id_counter_;
             auto promise = std::make_shared<std::promise<std_srvs::srv::Trigger::Response>>();
             auto future = promise->get_future();
@@ -139,13 +161,12 @@ PCTeleNode::PCTeleNode() : Node("pc_tele_node"), is_running_(true), req_id_count
                 std::lock_guard<std::mutex> lock(srv_map_mutex_);
                 pending_stop_reqs_[req_id] = promise;
             }
-            // 发送类型：REQ_STOP_DATA
             flatbuffers::FlatBufferBuilder builder(1024);
             auto wrapper = FlatbufferUtils::encode_trigger_req(builder, req_id, robot_msg_fbs::ServiceType_REQ_STOP_DATA);
             robot_msg_fbs::FinishCommWrapperBuffer(builder, wrapper);
             udp_socket_->send(builder.GetBufferPointer(), builder.GetSize());
 
-            if (future.wait_for(std::chrono::seconds(2)) == std::future_status::ready) {
+            if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
                 *response = future.get();
             } else {
                 RCLCPP_ERROR(this->get_logger(), "StopData Service timeout!");
@@ -154,7 +175,9 @@ PCTeleNode::PCTeleNode() : Node("pc_tele_node"), is_running_(true), req_id_count
                 std::lock_guard<std::mutex> lock(srv_map_mutex_);
                 pending_stop_reqs_.erase(req_id);
             }
-        });
+        },
+        rmw_qos_profile_services_default,
+        cb_group_services_); // <--- 这里加了组
 
     RCLCPP_INFO(this->get_logger(), "PC initialized");
     recv_thread_ = std::thread(&PCTeleNode::recv_loop, this);
@@ -165,6 +188,16 @@ PCTeleNode::~PCTeleNode() {
     if (recv_thread_.joinable()) {
         recv_thread_.join();
     }
+}
+
+void PCTeleNode::timer_callback() {
+    uint64_t tx = stats_topic_send_count_.exchange(0);
+    uint64_t rx = stats_topic_recv_count_.exchange(0);
+    uint64_t srv = stats_srv_count_.exchange(0);
+    
+    RCLCPP_INFO(this->get_logger(), 
+        "[Stats 2s] TX Topics: %lu | RX Topics: %lu | Service Calls: %lu", 
+        tx, rx, srv);
 }
 
 void PCTeleNode::recv_loop() {
@@ -206,7 +239,6 @@ void PCTeleNode::recv_loop() {
                 }
                 break;
             }
-            // 处理服务回包
             case robot_msg_fbs::AnyMsg_ServiceData: {
                 auto srv = wrapper->msg_as_ServiceData();
                 if (!srv) break;
@@ -214,7 +246,6 @@ void PCTeleNode::recv_loop() {
                 uint64_t id = srv->req_id();
                 std::lock_guard<std::mutex> lock(srv_map_mutex_);
 
-                // 1. Teleop 回复
                 if (srv->type() == robot_msg_fbs::ServiceType_RESP_TELEOP_FRAME) {
                     if (pending_teleop_reqs_.count(id)) {
                         system_manager_msg::srv::TeleopFrame::Response resp;
@@ -223,7 +254,6 @@ void PCTeleNode::recv_loop() {
                         pending_teleop_reqs_.erase(id);
                     }
                 }
-                // 2. StartData 回复 (新增)
                 else if (srv->type() == robot_msg_fbs::ServiceType_RESP_START_DATA) {
                     if (pending_start_reqs_.count(id)) {
                         std_srvs::srv::Trigger::Response resp;
@@ -232,7 +262,6 @@ void PCTeleNode::recv_loop() {
                         pending_start_reqs_.erase(id);
                     }
                 }
-                // 3. StopData 回复 (新增)
                 else if (srv->type() == robot_msg_fbs::ServiceType_RESP_STOP_DATA) {
                     if (pending_stop_reqs_.count(id)) {
                         std_srvs::srv::Trigger::Response resp;
@@ -249,18 +278,21 @@ void PCTeleNode::recv_loop() {
 }
 
 void PCTeleNode::parse_joint_state(const robot_msg_fbs::JointState* fb_msg, rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr publisher) {
+    stats_topic_recv_count_++;
     sensor_msgs::msg::JointState ros_msg;
     FlatbufferUtils::decode_joint_state(fb_msg, ros_msg);
     publisher->publish(ros_msg);
 }
 
 void PCTeleNode::parse_pose_stamped(const robot_msg_fbs::PoseStamped* fb_msg, rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher) {
+    stats_topic_recv_count_++;
     geometry_msgs::msg::PoseStamped ros_msg;
     FlatbufferUtils::decode_pose_stamped(fb_msg, ros_msg);
     publisher->publish(ros_msg);
 }
 
 void PCTeleNode::send_joint_state(robot_msg_fbs::RobotMsgType msg_type, const sensor_msgs::msg::JointState& msg) {
+    stats_topic_send_count_++;
     flatbuffers::FlatBufferBuilder builder(1024);
     auto wrapper = FlatbufferUtils::encode_joint_state(builder, msg_type, msg);
     robot_msg_fbs::FinishCommWrapperBuffer(builder, wrapper);
@@ -268,6 +300,7 @@ void PCTeleNode::send_joint_state(robot_msg_fbs::RobotMsgType msg_type, const se
 }
 
 void PCTeleNode::send_pose_stamped(robot_msg_fbs::RobotMsgType msg_type, const geometry_msgs::msg::PoseStamped& msg) {
+    stats_topic_send_count_++;
     flatbuffers::FlatBufferBuilder builder(1024);
     auto wrapper = FlatbufferUtils::encode_pose_stamped(builder, msg_type, msg);
     robot_msg_fbs::FinishCommWrapperBuffer(builder, wrapper);
@@ -275,6 +308,7 @@ void PCTeleNode::send_pose_stamped(robot_msg_fbs::RobotMsgType msg_type, const g
 }
 
 void PCTeleNode::send_twist_stamped(robot_msg_fbs::RobotMsgType msg_type, const geometry_msgs::msg::TwistStamped& msg) {
+    stats_topic_send_count_++;
     flatbuffers::FlatBufferBuilder builder(1024);
     auto wrapper = FlatbufferUtils::encode_twist_stamped(builder, msg_type, msg);
     robot_msg_fbs::FinishCommWrapperBuffer(builder, wrapper);
@@ -282,6 +316,7 @@ void PCTeleNode::send_twist_stamped(robot_msg_fbs::RobotMsgType msg_type, const 
 }
 
 void PCTeleNode::send_motor_control(robot_msg_fbs::RobotMsgType msg_type, const hdas_msg::msg::MotorControl& msg) {
+    stats_topic_send_count_++;
     flatbuffers::FlatBufferBuilder builder(1024);
     auto wrapper = FlatbufferUtils::encode_motor_control(builder, msg_type, msg);
     robot_msg_fbs::FinishCommWrapperBuffer(builder, wrapper);
@@ -292,7 +327,11 @@ void PCTeleNode::send_motor_control(robot_msg_fbs::RobotMsgType msg_type, const 
 
 int main(int argc, char* argv[]) {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<galaxea_robot_tele::PCTeleNode>());
+    // 关键修改：使用多线程执行器，防止服务等待时阻塞其他 Topic 转发
+    rclcpp::executors::MultiThreadedExecutor executor;
+    auto node = std::make_shared<galaxea_robot_tele::PCTeleNode>();
+    executor.add_node(node);
+    executor.spin();
     rclcpp::shutdown();
     return 0;
 }
