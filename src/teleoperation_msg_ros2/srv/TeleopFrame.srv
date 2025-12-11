@@ -1,0 +1,7 @@
+# TeleopFrame.srv
+# Request: 动作指令
+uint8 action
+---
+# Response: 操作结果
+bool success
+string message

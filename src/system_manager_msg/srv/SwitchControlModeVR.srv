@@ -1,0 +1,7 @@
+# SwitchControlModeVR.srv
+# Request: true 启用VR模式，false 启用IK服务模式
+bool use_vr_mode
+---
+# Response: 操作结果
+bool success
+string message
