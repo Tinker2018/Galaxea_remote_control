@@ -47,8 +47,8 @@ RobotTeleNode::RobotTeleNode() : Node("robot_tele_node"), is_running_(true)  {
     pub_target_pose_arm_left_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_target/target_pose_arm_left", 10);
     pub_target_pose_arm_right_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/motion_target/target_pose_arm_right", 10);
     
-    pub_target_speed_chassis_ = this->create_publisher<geometry_msgs::msg::TwistStamped>("/motion_control/control_speed_chassis", 10);
-    pub_target_speed_torso_ = this->create_publisher<geometry_msgs::msg::TwistStamped>("/motion_control/control_speed_torso", 10);
+    pub_target_speed_chassis_ = this->create_publisher<geometry_msgs::msg::TwistStamped>("/motion_control/target_speed_chassis", 10);
+    pub_target_speed_torso_ = this->create_publisher<geometry_msgs::msg::TwistStamped>("/motion_control/target_speed_torso", 10);
     
     pub_control_arm_left_ = this->create_publisher<hdas_msg::msg::MotorControl>("/motion_control/control_arm_left", 10);
     pub_control_arm_right_ = this->create_publisher<hdas_msg::msg::MotorControl>("/motion_control/control_arm_right", 10);
