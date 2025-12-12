@@ -7,7 +7,7 @@ udp_config:
     target_ip: "10.0.42.25"
     target_port: 8888
   pc:
-    local_ip: "10.0.42.25"
+    local_ip: "10.0.42.60"
     local_port: 8888
     target_ip: "10.0.42.171"
     target_port: 8888
