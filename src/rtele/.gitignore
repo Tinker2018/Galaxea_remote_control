@@ -1,0 +1,20 @@
+# Bazel build outputs
+/bazel-*
+MODULE.bazel.lock
+build
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build artifacts
+*.o
+*.a
+*.so
+*.dylib
+
+# Test outputs
+test_outputs/

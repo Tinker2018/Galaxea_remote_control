@@ -1,0 +1,24 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+# VolcEngine RTC SDK 封装
+cc_library(
+    name = "volcengine_rtc",
+    hdrs = glob([
+        "include/**/*.h",
+    ]),
+    srcs = [
+        "lib/libVolcEngineRTC.so",
+        "lib/libbytenn.so",
+        "lib/libbytertc_fdk-aac_extension.so",
+        "lib/libbytertc_ffmpeg_audio_extension.so",
+        "lib/libbytertc_nico_extension.so",
+        "lib/libbytertc_vp8codec_extension.so",
+        "lib/libRTCFFmpeg.so",
+    ],
+    includes = ["include"],
+    visibility = ["//visibility:public"],
+    linkopts = [
+        "-ldl",
+        "-lpthread",
+    ],
+)

@@ -1,0 +1,64 @@
+/*
+ * Copyright (c) 2021 The VolcEngineRTC project authors. All Rights Reserved.
+ * @brief VolcEngineRTC Video Processor Interface
+*/
+
+#pragma once
+
+#include "bytertc_video_frame.h"
+
+namespace bytertc {
+/**
+ * @locale zh
+ * @type api
+ * @brief 视频处理接口类
+ * @list 视频处理
+ */
+/**
+ * @locale en
+ * @type api
+ * @brief Video processor
+ * @list Video Processing
+ */
+class IVideoProcessor
+{
+public:
+    /**
+     * @locale zh
+     * @hidden constructor/destructor
+     */
+    /**
+     * @locale en
+     * @hidden constructor/destructor
+     */
+    virtual ~IVideoProcessor() = default;
+    /**
+     * @locale zh
+     * @type api
+     * @brief 获取 RTC SDK 采集得到的视频帧，根据 registerLocalVideoProcessor{@link #IRTCEngine#registerLocalVideoProcessor} 设置的视频前处理器，进行视频前处理，最终将处理后的视频帧给到 RTC SDK 用于编码传输。
+     * @param src_frame RTC SDK 采集得到的视频帧，参看 IVideoFrame{@link #IVideoFrame}。
+     * @return 经过视频前处理后的视频帧，返回给 RTC SDK 供编码和传输，参看 IVideoFrame{@link #IVideoFrame}。
+     * @note
+     *       - 在进行视频前处理前，你需要调用 registerLocalVideoProcessor{@link #IRTCEngine#registerLocalVideoProcessor} 设置视频前处理器。
+     *       - 如果需要取消视频前处理，可以将视频前处理器设置为 nullptr。
+     *       - 应用层实现 `processVideoFrame` 接口时，可以直接修改 `src_frame` 的缓冲区，调用 `addRef` 方法将 `src_frame` 引用计数加一，然后将修改后的 `src_frame` 返回， 也可以创建一个新的视频帧并返回。
+     *       - 对于 `processVideoFrame` 返回的视频帧，在 SDK 层消费完成后，SDK 内部总是调用这个视频帧的 releaseRef 方法。
+     * @list 自定义流处理
+     */
+    /**
+     * @locale en
+     * @type api
+     * @brief  Get RTC SDK acquired video frames obtained, according to the video pre-processor registerLocalVideoProcessor{@link #IRTCEngine#registerLocalVideoProcessor} set, video pre-processing, the final processed video frames to the RTC SDK for encoding transmission.
+     * @param src_frame Video frames captured by the RTC SDK. See IVideoFrame{@link #IVideoFrame}.
+     * @return The video frame after video preprocessing is returned to the RTC SDK for encoding and transmission. See IVideoFrame{@link #IVideoFrame}.
+     * @note
+     *        - Before video preprocessing, you need to call registerLocalVideoProcessor{@link #IRTCEngine#registerLocalVideoProcessor} to set up the video preprocessor.
+     *        - If you need to cancel the video preprocessing, you can set the video preprocessor to nullptr.
+     *        - When implementing `processVideoFrame`, you can directly modify the buffer of src_frame, call `addRef` to add the src_frame reference count by one, and return the modified `src_frame`, or you can also create a new video frame and return it.
+     *        - For the video frame returned by `processVideoFrame`, after consuming by the SDK layer, the SDK always calls the `releaseRef` method of this video frame.
+     * @list Custom Stream Processing
+     */
+    virtual IVideoFrame* processVideoFrame(IVideoFrame* src_frame) = 0;
+};
+
+} // namespace bytertc

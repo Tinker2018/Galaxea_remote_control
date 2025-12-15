@@ -1,0 +1,10 @@
+# Resource files for rtele
+
+exports_files(
+    [
+        "1280X720X15XI420.yuv",
+        "48000-stereo-s16le.pcm",
+        "20250812-131830.jpg",
+    ],
+    visibility = ["//visibility:public"],
+)

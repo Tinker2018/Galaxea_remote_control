@@ -1,0 +1,5 @@
+cc_library(
+    name = "mpmc",
+    hdrs = ["MPMCQueue.h"],
+    visibility = ["//visibility:public"],
+)
