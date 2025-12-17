@@ -14,10 +14,6 @@ VideoFrameConsumer::VideoFrameConsumer(const std::string& user_id, VideoFrameCal
 bool VideoFrameConsumer::onFrame(bytertc::IVideoFrame* video_frame) {
     if (!video_frame || !callback_) return false;
 
-    // [调试] 收到第一帧时打印一下，确认通路打通
-    // static bool first_frame = true;
-    // if (first_frame) { spdlog::info("Rx Video Frame: {}x{}", video_frame->width(), video_frame->height()); first_frame = false; }
-
     auto frame_data = std::make_shared<VideoFrameData>();
     frame_data->width = video_frame->width();
     frame_data->height = video_frame->height();
@@ -159,14 +155,11 @@ bool RTCEngine::JoinRoom() {
     user_info.uid = config_.user_id.c_str();
     
     bytertc::RTCRoomConfig room_config;
-    
-    // 关闭自动发布
     room_config.is_auto_publish_audio = false; 
     room_config.is_auto_publish_video = false;
-    
-    // 关闭自动订阅，完全由 onUserPublishStreamVideo 接管
     room_config.is_auto_subscribe_audio = false; 
     room_config.is_auto_subscribe_video = false;
+    room_config.stream_id = config_.user_id.c_str();
 
     int ret = rtc_room_->joinRoom(config_.token.c_str(), user_info, true, room_config);
 #endif
@@ -182,7 +175,7 @@ bool RTCEngine::StartPublish() {
     if (!rtc_room_ || !rtc_engine_) return false;
 
 #ifdef VOLC_RTC_ARM64
-    rtc_engine_->setVideoSourceType(bytertc::kVideoSourceTypeExternal, bytertc::kStreamIndexMain);
+    rtc_engine_->setVideoSourceType(bytertc::kStreamIndexMain, bytertc::kVideoSourceTypeExternal);
     rtc_room_->publishStream(bytertc::kMediaStreamTypeVideo);
 #else
     rtc_engine_->setVideoSourceType(bytertc::kVideoSourceTypeExternal);
@@ -262,14 +255,12 @@ void RTCEngine::onRoomStateChanged(const char* room_id, const char* uid, int sta
 #ifdef VOLC_RTC_ARM64
 void RTCEngine::onUserJoined(const bytertc::UserInfo& info, int elapsed) {
     spdlog::info("User Joined (ARM): {}", info.uid);
-    // ARM 版 SDK 可以在这里尝试订阅，也可以等 Publish 回调
-    // CheckAndSubscribe(info.uid); 
+    CheckAndSubscribe(info.uid);
 }
 #else
 void RTCEngine::onUserJoined(const bytertc::UserInfo& info) {
     spdlog::info("User Joined (x86): {}", info.uid);
-    // x86 旧版 SDK 在这里订阅可能会失败（因为不知道 stream_id），所以这里不订阅
-    // 我们依赖 onUserPublishStreamVideo
+    CheckAndSubscribe(info.uid);
 }
 #endif
 
@@ -277,43 +268,28 @@ void RTCEngine::onUserLeave(const char* uid, bytertc::UserOfflineReason) {
     spdlog::info("User Left: {}", uid);
 }
 
-// --- 推流回调 (核心逻辑修复) ---
-
 #ifdef VOLC_RTC_ARM64
 void RTCEngine::onUserPublishStream(const char* uid, bytertc::MediaStreamType type) {
     if (type == bytertc::kMediaStreamTypeVideo || type == bytertc::kMediaStreamTypeBoth) {
         spdlog::info("User Published Video (ARM): {}", uid);
-        // ARM 新版 SDK 的 stream_id 通常就是 uid，或者 API 不要求传 stream_id
         CheckAndSubscribe(uid);
     }
 }
-void RTCEngine::onUserUnPublishStream(const char*, bytertc::MediaStreamType, bytertc::StreamRemoveReason) {}
+// [修复] 大小写修正 Unpublish
+void RTCEngine::onUserUnpublishStream(const char*, bytertc::MediaStreamType, bytertc::StreamRemoveReason) {}
 #else
-// [重点修复] x86 旧版回调：参数1是 stream_id, info 包含 user_id
 void RTCEngine::onUserPublishStreamVideo(const char* stream_id, const bytertc::StreamInfo& info, bool is_pub) {
     if (is_pub) {
         std::string uid = info.user_id;
         std::string sid = stream_id;
         
-        spdlog::info("User Published Video (x86): UserID={} StreamID={}", uid, sid);
-        
-        // 核心修复：用 UserID 查消费者，用 StreamID 订阅
         absl::MutexLock lock(&consumer_mutex_);
         if (video_consumers_.count(uid)) {
             auto consumer = video_consumers_[uid];
-            
-            // 1. 设置 Sink (必须匹配 StreamID)
             bytertc::RemoteVideoSinkConfig sink_config;
             sink_config.pixel_format = bytertc::kVideoPixelFormatI420;
-            
-            int ret_sink = rtc_engine_->setRemoteVideoSink(sid.c_str(), consumer.get(), sink_config);
-            
-            // 2. 订阅流 (必须匹配 StreamID)
-            int ret_sub = rtc_room_->subscribeStreamVideo(sid.c_str(), true);
-            
-            spdlog::info("-> Subscribed {} (Stream: {}): SinkRes={}, SubRes={}", uid, sid, ret_sink, ret_sub);
-        } else {
-            spdlog::warn("-> No consumer registered for UserID: {}", uid);
+            rtc_engine_->setRemoteVideoSink(sid.c_str(), consumer.get(), sink_config);
+            rtc_room_->subscribeStreamVideo(sid.c_str(), true);
         }
     }
 }
@@ -330,13 +306,22 @@ void RTCEngine::onRoomBinaryMessageReceived(const char* uid, int size, const uin
 void RTCEngine::RegisterVideoConsumer(const std::string& user_id, std::shared_ptr<VideoFrameConsumer> consumer) {
     absl::MutexLock lock(&consumer_mutex_);
     video_consumers_[user_id] = consumer;
-    // x86 下这里只是注册，真正的 setRemoteVideoSink 移到收到 Publish 回调且拿到 StreamID 之后
-    // 除非你知道确切的 StreamID，否则现在 set 也没用
-#ifdef VOLC_RTC_ARM64
     if (rtc_engine_) {
-        rtc_engine_->setRemoteVideoSink(user_id.c_str(), bytertc::kStreamIndexMain, consumer.get());
-    }
+#ifdef VOLC_RTC_ARM64
+        bytertc::RemoteStreamKey key;
+        key.room_id = config_.room_id.c_str();
+        key.user_id = user_id.c_str();
+        key.stream_index = bytertc::kStreamIndexMain;
+        // [修复] 使用全局定义的 kVideoPixelFormatI420 (数值通常为 1)
+        // 或者 IVideoSink::PixelFormat::kI420 (如果定义了)
+        // 最稳妥：bytertc::kVideoPixelFormatI420 强转
+        rtc_engine_->setRemoteVideoSink(key, consumer.get(), static_cast<bytertc::IVideoSink::PixelFormat>(bytertc::kVideoPixelFormatI420));
+#else
+        bytertc::RemoteVideoSinkConfig sink_config;
+        sink_config.pixel_format = bytertc::kVideoPixelFormatI420;
+        rtc_engine_->setRemoteVideoSink(user_id.c_str(), consumer.get(), sink_config);
 #endif
+    }
 }
 
 void RTCEngine::RegisterMessageConsumer(std::shared_ptr<MessageConsumer> consumer) {
@@ -345,12 +330,18 @@ void RTCEngine::RegisterMessageConsumer(std::shared_ptr<MessageConsumer> consume
 }
 
 bool RTCEngine::CheckAndSubscribe(const std::string& user_id) {
-    // 仅 ARM 版使用这个主动检查逻辑，x86 版依赖回调
 #ifdef VOLC_RTC_ARM64
     absl::MutexLock lock(&consumer_mutex_);
     if (video_consumers_.count(user_id)) {
         auto consumer = video_consumers_[user_id];
-        rtc_engine_->setRemoteVideoSink(user_id.c_str(), bytertc::kStreamIndexMain, consumer.get());
+        
+        bytertc::RemoteStreamKey key;
+        key.room_id = config_.room_id.c_str();
+        key.user_id = user_id.c_str();
+        key.stream_index = bytertc::kStreamIndexMain;
+        
+        // [修复] 强制转换枚举类型
+        rtc_engine_->setRemoteVideoSink(key, consumer.get(), static_cast<bytertc::IVideoSink::PixelFormat>(bytertc::kVideoPixelFormatI420));
         rtc_room_->subscribeStream(user_id.c_str(), bytertc::kMediaStreamTypeVideo);
         return true;
     }

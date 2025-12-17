@@ -19,10 +19,14 @@
     #include "rtc/bytertc_video_frame.h"
     #include "bytertc_room.h"
     #include "bytertc_room_event_handler.h"
+    // ARM 版基类别名
+    using IRTCEventHandler = bytertc::IRTCVideoEventHandler;
 #else
     // [x86 / PC] 旧版 SDK
     #include "bytertc_engine.h"
     #include "bytertc_room.h"
+    // x86 版基类别名
+    using IRTCEventHandler = bytertc::IRTCEngineEventHandler;
 #endif
 
 namespace rtele {
@@ -75,7 +79,7 @@ private:
     MessageCallback callback_;
 };
 
-class RTCEngine : public bytertc::IRTCEngineEventHandler,
+class RTCEngine : public IRTCEventHandler,
                   public bytertc::IRTCRoomEventHandler {
 public:
     explicit RTCEngine(const config::RTCConfig& config);
@@ -97,12 +101,11 @@ private:
     
     void onRoomStateChanged(const char* room_id, const char* uid, int state, const char* extra_info) override;
     
-    // --- 核心差异点：onUserJoined 签名 ---
 #ifdef VOLC_RTC_ARM64
-    // ARM: 两个参数 (UserInfo, elapsed)
+    // ARM: 两个参数
     void onUserJoined(const bytertc::UserInfo& user_info, int elapsed) override;
 #else 
-    // x86: 只有一个参数 (UserInfo)
+    // x86: 一个参数
     void onUserJoined(const bytertc::UserInfo& user_info) override;
 #endif
     
@@ -111,9 +114,9 @@ private:
     // --- 差异回调声明 ---
 #ifdef VOLC_RTC_ARM64
     void onUserPublishStream(const char* uid, bytertc::MediaStreamType type) override;
-    void onUserUnPublishStream(const char* uid, bytertc::MediaStreamType type, bytertc::StreamRemoveReason reason) override;
+    // [修复] 大小写修正: onUserUnpublishStream
+    void onUserUnpublishStream(const char* uid, bytertc::MediaStreamType type, bytertc::StreamRemoveReason reason) override;
 #else 
-    // x86 旧版回调
     void onUserPublishStreamVideo(const char* uid, const bytertc::StreamInfo& info, bool is_publish) override;
 #endif
 
