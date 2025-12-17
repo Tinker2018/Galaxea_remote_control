@@ -1,11 +1,7 @@
 #include "src/rtc/rtc_engine.h"
-#include <chrono>
-#include <thread>
-#include "absl/strings/str_format.h"
-#include "src/util/token_generator.h"
-#include "src/util/video_file_reader.h"
-#include "rtc/bytertc_video_frame.h"
 #include "spdlog/spdlog.h"
+#include <chrono>
+#include <cstring>
 
 namespace rtele {
 namespace rtc {
@@ -13,350 +9,381 @@ namespace rtc {
 // ==================== VideoFrameConsumer 实现 ====================
 
 VideoFrameConsumer::VideoFrameConsumer(const std::string& user_id, VideoFrameCallback callback)
-    : user_id_(user_id), callback_(std::move(callback)) {
-    spdlog::info("VideoFrameConsumer created for user: {}", user_id_);
-}
+    : user_id_(user_id), callback_(std::move(callback)) {}
 
 bool VideoFrameConsumer::onFrame(bytertc::IVideoFrame* video_frame) {
-    if (!video_frame) return false;
-    if (!callback_) return true;
-    
+    if (!video_frame || !callback_) return false;
+
+    // [调试] 收到第一帧时打印一下，确认通路打通
+    // static bool first_frame = true;
+    // if (first_frame) { spdlog::info("Rx Video Frame: {}x{}", video_frame->width(), video_frame->height()); first_frame = false; }
+
     auto frame_data = std::make_shared<VideoFrameData>();
     frame_data->width = video_frame->width();
     frame_data->height = video_frame->height();
     frame_data->timestamp_us = video_frame->timestampUs();
     frame_data->user_id = user_id_;
-    
-    auto format = video_frame->pixelFormat();
-    if (format == bytertc::kVideoPixelFormatI420) {
-        int width = frame_data->width;
-        int height = frame_data->height;
-        int y_size = width * height;
+
+    if (video_frame->pixelFormat() == bytertc::kVideoPixelFormatI420) {
+        int y_size = frame_data->width * frame_data->height;
         int uv_size = y_size / 4;
         frame_data->data.resize(y_size + uv_size * 2);
-        
-        uint8_t* y_plane = video_frame->planeData(0);
-        uint8_t* u_plane = video_frame->planeData(1);
-        uint8_t* v_plane = video_frame->planeData(2);
+
+#ifdef VOLC_RTC_ARM64
+        uint8_t* y_src = video_frame->getPlaneData(0);
+        uint8_t* u_src = video_frame->getPlaneData(1);
+        uint8_t* v_src = video_frame->getPlaneData(2);
+        int y_stride = video_frame->getPlaneStride(0);
+        int u_stride = video_frame->getPlaneStride(1);
+        int v_stride = video_frame->getPlaneStride(2);
+#else
+        uint8_t* y_src = video_frame->planeData(0);
+        uint8_t* u_src = video_frame->planeData(1);
+        uint8_t* v_src = video_frame->planeData(2);
         int y_stride = video_frame->planeStride(0);
         int u_stride = video_frame->planeStride(1);
         int v_stride = video_frame->planeStride(2);
-        
-        if (y_plane && u_plane && v_plane) {
-            for (int row = 0; row < height; row++) {
-                memcpy(frame_data->data.data() + row * width, y_plane + row * y_stride, width);
-            }
-            int uv_width = width / 2;
-            int uv_height = height / 2;
-            for (int row = 0; row < uv_height; row++) {
-                memcpy(frame_data->data.data() + y_size + row * uv_width, u_plane + row * u_stride, uv_width);
-            }
-            for (int row = 0; row < uv_height; row++) {
-                memcpy(frame_data->data.data() + y_size + uv_size + row * uv_width, v_plane + row * v_stride, uv_width);
+#endif
+
+        uint8_t* dst = frame_data->data.data();
+        if (y_src) {
+            for (int i = 0; i < frame_data->height; ++i) {
+                memcpy(dst + i * frame_data->width, y_src + i * y_stride, frame_data->width);
             }
         }
+        dst += y_size;
+        int uv_w = frame_data->width / 2;
+        int uv_h = frame_data->height / 2;
+        if (u_src) {
+            for (int i = 0; i < uv_h; ++i) {
+                memcpy(dst + i * uv_w, u_src + i * u_stride, uv_w);
+            }
+        }
+        dst += uv_size;
+        if (v_src) {
+            for (int i = 0; i < uv_h; ++i) {
+                memcpy(dst + i * uv_w, v_src + i * v_stride, uv_w);
+            }
+        }
+        
+        callback_(frame_data);
+        return true;
     }
-    callback_(frame_data);
-    return true;
+    return false;
 }
 
 // ==================== MessageConsumer 实现 ====================
 
-MessageConsumer::MessageConsumer(MessageCallback binary_callback, MessageCallback text_callback)
-    : binary_callback_(std::move(binary_callback)), text_callback_(std::move(text_callback)) {
-    spdlog::info("MessageConsumer created");
-}
-
-void MessageConsumer::OnTextMessage(const std::string& user_id, const char* message, size_t length) {
-    if (!text_callback_) return;
-    auto msg_data = std::make_shared<MessageData>();
-    msg_data->user_id = user_id;
-    msg_data->type = MessageType::TEXT;
-    msg_data->data = std::make_shared<std::vector<uint8_t>>(
-        reinterpret_cast<const uint8_t*>(message), reinterpret_cast<const uint8_t*>(message) + length);
-    msg_data->timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch()).count();
-    text_callback_(msg_data);
-}
+MessageConsumer::MessageConsumer(MessageCallback callback) : callback_(std::move(callback)) {}
 
 void MessageConsumer::OnBinaryMessage(const std::string& user_id, const uint8_t* data, size_t length) {
-    if (!binary_callback_) return;
-    auto msg_data = std::make_shared<MessageData>();
-    msg_data->user_id = user_id;
-    msg_data->type = MessageType::BINARY;
-    msg_data->data = std::make_shared<std::vector<uint8_t>>(data, data + length);
-    msg_data->timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch()).count();
-    binary_callback_(msg_data);
+    if (!callback_) return;
+    auto msg = std::make_shared<MessageData>();
+    msg->user_id = user_id;
+    msg->type = MessageData::Type::BINARY;
+    msg->data = std::make_shared<std::vector<uint8_t>>(data, data + length);
+    msg->timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            std::chrono::system_clock::now().time_since_epoch()).count();
+    callback_(msg);
 }
 
 // ==================== RTCEngine 实现 ====================
 
-RTCEngine::RTCEngine(const config::RTCConfig& config) : config_(config) {
-    config_.Print();
-}
+RTCEngine::RTCEngine(const config::RTCConfig& config) : config_(config) {}
 
 RTCEngine::~RTCEngine() { Destroy(); }
 
 bool RTCEngine::Initialize() {
     if (initialized_) return true;
-    
+
+#ifdef VOLC_RTC_ARM64
+    rtc_engine_ = bytertc::createRTCVideo(config_.app_id.c_str(), this, nullptr);
+#else
     bytertc::EngineConfig engine_config;
     engine_config.app_id = config_.app_id.c_str();
-    engine_config.parameters = config_.param.c_str();
-    
     rtc_engine_ = bytertc::IRTCEngine::createRTCEngine(engine_config, this);
-    if (!rtc_engine_) return false;
-    
+#endif
+
+    if (!rtc_engine_) {
+        spdlog::error("Failed to create RTC Engine");
+        return false;
+    }
+
     InitVideoDevice();
-    InitAudioDevice();
-    InitVideoConfig();
-    InitAudioConfig();
-    
     initialized_ = true;
     return true;
 }
 
+bool RTCEngine::InitVideoDevice() {
+    if (!rtc_engine_) return false;
+
+    bytertc::VideoEncoderConfig c;
+    c.width = config_.video_width;
+    c.height = config_.video_height;
+    c.frame_rate = config_.video_fps;
+    c.max_bitrate = config_.video_max_bitrate;
+
+#ifdef VOLC_RTC_ARM64
+    rtc_engine_->setVideoEncoderConfig(c);
+#else
+    rtc_engine_->setVideoEncoderConfig(c);
+#endif
+
+    return true;
+}
+
 bool RTCEngine::JoinRoom() {
-    if (!initialized_) return false;
-    
+    if (!initialized_ || !rtc_engine_) return false;
+
+#ifdef VOLC_RTC_ARM64
     rtc_room_ = rtc_engine_->createRTCRoom(config_.room_id.c_str());
     if (!rtc_room_) return false;
+    rtc_room_->setRTCRoomEventHandler(this);
     
+    bytertc::UserInfo user_info;
+    user_info.uid = config_.user_id.c_str();
+    user_info.extra_info = nullptr;
+
+    bytertc::RTCRoomConfig room_config;
+    room_config.is_auto_publish = false;
+    room_config.is_auto_subscribe_audio = true;
+    room_config.is_auto_subscribe_video = true;
+
+    int ret = rtc_room_->joinRoom(config_.token.c_str(), user_info, room_config);
+#else
+    rtc_room_ = rtc_engine_->createRTCRoom(config_.room_id.c_str());
+    if (!rtc_room_) return false;
     rtc_room_->setRTCRoomEventHandler(this);
     
     bytertc::UserInfo user_info;
     user_info.uid = config_.user_id.c_str();
     
     bytertc::RTCRoomConfig room_config;
-    room_config.is_auto_subscribe_audio = false;
-    room_config.is_auto_subscribe_video = false;
     
+    // 关闭自动发布
+    room_config.is_auto_publish_audio = false; 
+    room_config.is_auto_publish_video = false;
+    
+    // 关闭自动订阅，完全由 onUserPublishStreamVideo 接管
+    room_config.is_auto_subscribe_audio = false; 
+    room_config.is_auto_subscribe_video = false;
+
     int ret = rtc_room_->joinRoom(config_.token.c_str(), user_info, true, room_config);
+#endif
+
     if (ret != 0) {
-        rtc_room_->destroy();
-        rtc_room_ = nullptr;
+        spdlog::error("Join room failed: {}", ret);
         return false;
     }
-    running_ = true;
     return true;
 }
 
 bool RTCEngine::StartPublish() {
-    if (rtc_room_ == nullptr) return false;
-    if (config_.enable_video) {
-        rtc_engine_->setVideoSourceType(bytertc::kVideoSourceTypeExternal);
-        rtc_room_->publishStreamVideo(true);
-    }
-    if (config_.enable_audio) rtc_room_->publishStreamAudio(true);
+    if (!rtc_room_ || !rtc_engine_) return false;
+
+#ifdef VOLC_RTC_ARM64
+    rtc_engine_->setVideoSourceType(bytertc::kVideoSourceTypeExternal, bytertc::kStreamIndexMain);
+    rtc_room_->publishStream(bytertc::kMediaStreamTypeVideo);
+#else
+    rtc_engine_->setVideoSourceType(bytertc::kVideoSourceTypeExternal);
+    rtc_room_->publishStreamVideo(true); 
+#endif
+
     publishing_ = true;
+    spdlog::info("Start Publishing Video...");
     return true;
 }
 
-void RTCEngine::StopPublish() {
-    if (!publishing_) return;
-    if (rtc_room_) {
-        rtc_room_->publishStreamVideo(false);
-        rtc_room_->publishStreamAudio(false);
-    }
-    publishing_ = false;
-}
+bool RTCEngine::PushVideoFrame(const std::vector<uint8_t>& yuv_data) {
+    if (!publishing_ || !rtc_engine_) return false;
+    
+    int width = config_.video_width;
+    int height = config_.video_height;
+    int y_size = width * height;
+    int uv_size = y_size / 4;
 
-bool RTCEngine::SubscribeRemoteStream(const bytertc::StreamInfo& stream_info) {
-    absl::MutexLock lock(&subscribe_mutex_);
-    std::string stream_id_str(stream_info.stream_id);
-    std::string user_id_str(stream_info.user_id);
+    if (yuv_data.size() < static_cast<size_t>(y_size + uv_size * 2)) return false;
+
+#ifdef VOLC_RTC_ARM64
+    bytertc::VideoFrameBuilder builder;
+    builder.frame_type = bytertc::kVideoFrameTypeRawMemory;
+    builder.pixel_fmt = bytertc::kVideoPixelFormatI420;
+    builder.width = width;
+    builder.height = height;
+    builder.timestamp_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                            std::chrono::steady_clock::now().time_since_epoch()).count();
+    uint8_t* raw_ptr = const_cast<uint8_t*>(yuv_data.data());
+    builder.data[0] = raw_ptr;
+    builder.data[1] = raw_ptr + y_size;
+    builder.data[2] = raw_ptr + y_size + uv_size;
+    builder.linesize[0] = width;
+    builder.linesize[1] = width / 2;
+    builder.linesize[2] = width / 2;
+    bytertc::IVideoFrame* frame = bytertc::buildVideoFrame(builder);
+    if (frame) rtc_engine_->pushExternalVideoFrame(frame);
+#else
+    bytertc::VideoFrameData frame;
+    frame.pixel_format = bytertc::kVideoPixelFormatI420;
+    frame.width = width;
+    frame.height = height;
+    frame.timestamp_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                            std::chrono::steady_clock::now().time_since_epoch()).count();
     
-    if (subscribed_streams_.find(stream_id_str) != subscribed_streams_.end()) return true;
+    uint8_t* raw_ptr = const_cast<uint8_t*>(yuv_data.data());
+    frame.plane_data[0] = raw_ptr;
+    frame.plane_data[1] = raw_ptr + y_size;
+    frame.plane_data[2] = raw_ptr + y_size + uv_size;
     
-    rtc_room_->subscribeStreamVideo(stream_info.stream_id, true);
+    frame.plane_stride[0] = width;
+    frame.plane_stride[1] = width / 2;
+    frame.plane_stride[2] = width / 2;
     
-    {
-        absl::MutexLock consumer_lock(&consumer_mutex_);
-        auto consumer_it = video_consumers_.find(user_id_str);
-        if (consumer_it != video_consumers_.end() && consumer_it->second) {
-            bytertc::RemoteVideoSinkConfig video_config;
-            video_config.pixel_format = bytertc::kVideoPixelFormatI420;
-            rtc_engine_->setRemoteVideoSink(stream_info.stream_id, consumer_it->second.get(), video_config);
-            spdlog::info("✓ Set sink for user: {}", user_id_str);
-        }
-    }
-    subscribed_streams_[stream_id_str] = stream_info;
+    rtc_engine_->pushExternalVideoFrame(frame); 
+#endif
+
     return true;
 }
 
-void RTCEngine::UnsubscribeRemoteStream(const bytertc::StreamInfo& stream_info) {
-    absl::MutexLock lock(&subscribe_mutex_);
-    std::string stream_id_str(stream_info.stream_id);
-    auto it = subscribed_streams_.find(stream_id_str);
-    if (it == subscribed_streams_.end()) return;
-    
-    rtc_room_->subscribeStreamVideo(stream_info.stream_id, false);
-    subscribed_streams_.erase(it);
-}
-
-void RTCEngine::StopSubscribe() {
-    absl::MutexLock lock(&subscribe_mutex_);
-    if (rtc_room_) {
-        for (const auto& [stream_id, stream_info] : subscribed_streams_) {
-            rtc_room_->subscribeStreamVideo(stream_info.stream_id, false);
-        }
-    }
-    subscribed_streams_.clear();
-}
-
-void RTCEngine::Destroy() {
-    if (!initialized_) return;
-    StopSubscribe();
-    StopPublish();
-    if (rtc_room_) {
-        rtc_room_->leaveRoom();
-        rtc_room_ = nullptr;
-    }
-    if (rtc_engine_) {
-        bytertc::IRTCEngine::destroyRTCEngine();
-        rtc_engine_ = nullptr;
-    }
-    initialized_ = false;
-}
-
-// ==================== 消息发送与接收 (修复版) ====================
-
-// 发送文本消息
-bool RTCEngine::SendRoomMessage(const std::string& message) {
-    if (!rtc_room_) return false;
-    return rtc_room_->sendRoomMessage(message.c_str()) > 0;
-}
-
-// !!! 发送二进制消息 (已修复参数顺序) !!!
 bool RTCEngine::SendRoomBinaryMessage(const std::vector<uint8_t>& data) {
-    if (!rtc_room_) {
-        spdlog::error("Cannot send binary: not in room");
-        return false;
-    }
-    if (data.empty()) return false;
-    
-    // 修复：参数顺序应该是 (大小, 指针)
-    int64_t msg_id = rtc_room_->sendRoomBinaryMessage(static_cast<int>(data.size()), data.data());
-    
-    if (msg_id > 0) {
-        return true;
-    } else {
-        spdlog::error("Failed to send binary message, error code: {}", msg_id);
-        return false;
-    }
+    if (!rtc_room_ || data.empty()) return false;
+    int64_t ret = rtc_room_->sendRoomBinaryMessage(data.size(), data.data());
+    return ret >= 0;
 }
 
-// 接收文本消息回调
-void RTCEngine::onRoomMessageReceived(const char* uid, const char* message) {
-    if (!uid || !message) return;
-    size_t len = strlen(message);
-    absl::MutexLock lock(&consumer_mutex_);
-    for (auto& consumer : message_consumers_) {
-        if (consumer) consumer->OnTextMessage(uid, message, len);
-    }
+// ==================== 回调处理 ====================
+
+void RTCEngine::onWarning(int warn) { spdlog::warn("RTC Warn: {}", warn); }
+void RTCEngine::onError(int err) { spdlog::error("RTC Error: {}", err); }
+
+void RTCEngine::onRoomStateChanged(const char* room_id, const char* uid, int state, const char* extra_info) {
+    spdlog::info("Room State Changed: ID={} User={} State={}", room_id, uid, state);
 }
 
-// 接收二进制消息回调
+#ifdef VOLC_RTC_ARM64
+void RTCEngine::onUserJoined(const bytertc::UserInfo& info, int elapsed) {
+    spdlog::info("User Joined (ARM): {}", info.uid);
+    // ARM 版 SDK 可以在这里尝试订阅，也可以等 Publish 回调
+    // CheckAndSubscribe(info.uid); 
+}
+#else
+void RTCEngine::onUserJoined(const bytertc::UserInfo& info) {
+    spdlog::info("User Joined (x86): {}", info.uid);
+    // x86 旧版 SDK 在这里订阅可能会失败（因为不知道 stream_id），所以这里不订阅
+    // 我们依赖 onUserPublishStreamVideo
+}
+#endif
+
+void RTCEngine::onUserLeave(const char* uid, bytertc::UserOfflineReason) {
+    spdlog::info("User Left: {}", uid);
+}
+
+// --- 推流回调 (核心逻辑修复) ---
+
+#ifdef VOLC_RTC_ARM64
+void RTCEngine::onUserPublishStream(const char* uid, bytertc::MediaStreamType type) {
+    if (type == bytertc::kMediaStreamTypeVideo || type == bytertc::kMediaStreamTypeBoth) {
+        spdlog::info("User Published Video (ARM): {}", uid);
+        // ARM 新版 SDK 的 stream_id 通常就是 uid，或者 API 不要求传 stream_id
+        CheckAndSubscribe(uid);
+    }
+}
+void RTCEngine::onUserUnPublishStream(const char*, bytertc::MediaStreamType, bytertc::StreamRemoveReason) {}
+#else
+// [重点修复] x86 旧版回调：参数1是 stream_id, info 包含 user_id
+void RTCEngine::onUserPublishStreamVideo(const char* stream_id, const bytertc::StreamInfo& info, bool is_pub) {
+    if (is_pub) {
+        std::string uid = info.user_id;
+        std::string sid = stream_id;
+        
+        spdlog::info("User Published Video (x86): UserID={} StreamID={}", uid, sid);
+        
+        // 核心修复：用 UserID 查消费者，用 StreamID 订阅
+        absl::MutexLock lock(&consumer_mutex_);
+        if (video_consumers_.count(uid)) {
+            auto consumer = video_consumers_[uid];
+            
+            // 1. 设置 Sink (必须匹配 StreamID)
+            bytertc::RemoteVideoSinkConfig sink_config;
+            sink_config.pixel_format = bytertc::kVideoPixelFormatI420;
+            
+            int ret_sink = rtc_engine_->setRemoteVideoSink(sid.c_str(), consumer.get(), sink_config);
+            
+            // 2. 订阅流 (必须匹配 StreamID)
+            int ret_sub = rtc_room_->subscribeStreamVideo(sid.c_str(), true);
+            
+            spdlog::info("-> Subscribed {} (Stream: {}): SinkRes={}, SubRes={}", uid, sid, ret_sink, ret_sub);
+        } else {
+            spdlog::warn("-> No consumer registered for UserID: {}", uid);
+        }
+    }
+}
+#endif
+
 void RTCEngine::onRoomBinaryMessageReceived(const char* uid, int size, const uint8_t* data) {
-    if (!uid || !data || size <= 0) return;
-    
-    // spdlog::info("Received binary message from {}: {} bytes", uid, size);
-    
+    if (!uid || !data) return;
     absl::MutexLock lock(&consumer_mutex_);
     for (auto& consumer : message_consumers_) {
         if (consumer) consumer->OnBinaryMessage(uid, data, static_cast<size_t>(size));
     }
 }
 
-// ==================== 视频推流 ====================
-
-bool RTCEngine::PushVideoFrame(const std::vector<uint8_t>& frame_data) {
-    if (!publishing_ || !rtc_engine_ || frame_data.empty()) return false;
-    
-    bytertc::VideoFrameData video_frame;
-    video_frame.pixel_format = bytertc::kVideoPixelFormatI420;
-    video_frame.width = config_.video_width;
-    video_frame.height = config_.video_height;
-    video_frame.rotation = bytertc::kVideoRotation0;
-    video_frame.timestamp_us = std::chrono::duration_cast<std::chrono::microseconds>(
-        std::chrono::steady_clock::now().time_since_epoch()).count();
-    
-    int square = config_.video_width * config_.video_height;
-    video_frame.number_of_planes = 3;
-    video_frame.plane_data[0] = const_cast<uint8_t*>(frame_data.data());
-    video_frame.plane_data[1] = const_cast<uint8_t*>(frame_data.data()) + square;
-    video_frame.plane_data[2] = const_cast<uint8_t*>(frame_data.data()) + square * 5 / 4;
-    video_frame.plane_stride[0] = config_.video_width;
-    video_frame.plane_stride[1] = config_.video_width >> 1;
-    video_frame.plane_stride[2] = config_.video_width >> 1;
-    
-    return rtc_engine_->pushExternalVideoFrame(video_frame) == 0;
-}
-
-// ==================== 回调与其他逻辑 ====================
-
-void RTCEngine::onWarning(int warn) { spdlog::warn("Warn: {}", warn); }
-void RTCEngine::onError(int err) { spdlog::error("Err: {}", err); }
-void RTCEngine::onRoomStateChanged(const char*, const char*, int, const char*) {}
-void RTCEngine::onLeaveRoom(const bytertc::RtcRoomStats&) {}
-void RTCEngine::onUserJoined(const bytertc::UserInfo& info) { spdlog::info("User joined: {}", info.uid); }
-void RTCEngine::onUserLeave(const char* uid, bytertc::UserOfflineReason) {
-    absl::MutexLock lock(&subscribe_mutex_);
-    std::string user_id_str(uid);
-    std::vector<std::string> to_remove;
-    for (const auto& [sid, info] : subscribed_streams_) {
-        if (info.user_id == user_id_str) to_remove.push_back(sid);
-    }
-    for (const auto& sid : to_remove) subscribed_streams_.erase(sid);
-}
-
-void RTCEngine::onUserPublishStreamVideo(const char*, const bytertc::StreamInfo& info, bool is_publish) {
-    if (is_publish) CheckAndSubscribe(info);
-}
-void RTCEngine::onUserPublishStreamAudio(const char*, const bytertc::StreamInfo&, bool) {}
-
-void RTCEngine::CheckAndSubscribe(const bytertc::StreamInfo& info) {
-    if (ShouldSubscribe(info.user_id)) SubscribeRemoteStream(info);
-}
-
-bool RTCEngine::ShouldSubscribe(const std::string& user_id) const {
-    if (user_id == config_.user_id) return false;
-    absl::MutexLock lock(&consumer_mutex_);
-    return subscribed_user_ids_.find(user_id) != subscribed_user_ids_.end();
-}
-
-bool RTCEngine::InitVideoDevice() { return true; }
-bool RTCEngine::InitAudioDevice() { return true; }
-bool RTCEngine::InitVideoConfig() {
-    if (!config_.enable_video) return true;
-    bytertc::VideoEncoderConfig c;
-    c.width = config_.video_width; c.height = config_.video_height;
-    c.frame_rate = config_.video_fps; c.max_bitrate = config_.video_max_bitrate; c.min_bitrate = config_.video_min_bitrate;
-    rtc_engine_->setVideoEncoderConfig(c);
-    
-    if (config_.video_file_path.empty()) {
-        bytertc::VideoCaptureConfig cc;
-        cc.capture_preference = bytertc::VideoCaptureConfig::kManual;
-        cc.width = config_.video_width; cc.height = config_.video_height; cc.frame_rate = config_.video_fps;
-        rtc_engine_->setVideoCaptureConfig(cc);
-    }
-    return true;
-}
-bool RTCEngine::InitAudioConfig() { return true; }
-
 void RTCEngine::RegisterVideoConsumer(const std::string& user_id, std::shared_ptr<VideoFrameConsumer> consumer) {
-    if (!consumer) return;
     absl::MutexLock lock(&consumer_mutex_);
     video_consumers_[user_id] = consumer;
-    subscribed_user_ids_.insert(user_id); 
-    spdlog::info("Registered VideoConsumer for {}", user_id);
+    // x86 下这里只是注册，真正的 setRemoteVideoSink 移到收到 Publish 回调且拿到 StreamID 之后
+    // 除非你知道确切的 StreamID，否则现在 set 也没用
+#ifdef VOLC_RTC_ARM64
+    if (rtc_engine_) {
+        rtc_engine_->setRemoteVideoSink(user_id.c_str(), bytertc::kStreamIndexMain, consumer.get());
+    }
+#endif
 }
 
 void RTCEngine::RegisterMessageConsumer(std::shared_ptr<MessageConsumer> consumer) {
-    if (!consumer) return;
     absl::MutexLock lock(&consumer_mutex_);
     message_consumers_.push_back(consumer);
+}
+
+bool RTCEngine::CheckAndSubscribe(const std::string& user_id) {
+    // 仅 ARM 版使用这个主动检查逻辑，x86 版依赖回调
+#ifdef VOLC_RTC_ARM64
+    absl::MutexLock lock(&consumer_mutex_);
+    if (video_consumers_.count(user_id)) {
+        auto consumer = video_consumers_[user_id];
+        rtc_engine_->setRemoteVideoSink(user_id.c_str(), bytertc::kStreamIndexMain, consumer.get());
+        rtc_room_->subscribeStream(user_id.c_str(), bytertc::kMediaStreamTypeVideo);
+        return true;
+    }
+#endif
+    return false;
+}
+
+void RTCEngine::StopPublish() {
+    if (publishing_) {
+#ifdef VOLC_RTC_ARM64
+        if (rtc_room_) rtc_room_->unpublishStream(bytertc::kMediaStreamTypeVideo);
+#else
+        if (rtc_room_) rtc_room_->publishStreamVideo(false);
+#endif
+        publishing_ = false;
+    }
+}
+
+void RTCEngine::Destroy() {
+    if (rtc_room_) {
+        rtc_room_->leaveRoom();
+        rtc_room_->destroy();
+        rtc_room_ = nullptr;
+    }
+    if (rtc_engine_) {
+#ifdef VOLC_RTC_ARM64
+        bytertc::destroyRTCVideo();
+#else
+        bytertc::IRTCEngine::destroyRTCEngine();
+#endif
+        rtc_engine_ = nullptr;
+    }
+    initialized_ = false;
 }
 
 } // namespace rtc

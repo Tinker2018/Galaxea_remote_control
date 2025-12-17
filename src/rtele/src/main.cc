@@ -91,12 +91,13 @@ public:
         cb_group_ = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
 
         // 2. 注册 RTC 消息接收
-        auto msg_consumer = std::make_shared<rtele::rtc::MessageConsumer>(
-            [this](std::shared_ptr<rtele::rtc::MessageData> msg) {
-                if (msg->type == rtele::rtc::MessageType::BINARY) {
-                    this->OnRTCBinaryMessage(msg->GetData(), msg->GetSize());
-                }
-            }, nullptr);
+                auto msg_consumer = std::make_shared<rtele::rtc::MessageConsumer>(
+                    [this](std::shared_ptr<rtele::rtc::MessageData> msg) {
+                        // 注意：MessageData::Type 定义在 rtc_engine.h 的 MessageData 结构体里
+                        if (msg->type == rtele::rtc::MessageData::Type::BINARY) { 
+                            this->OnRTCBinaryMessage(msg->GetData(), msg->GetSize());
+                        }
+                    }); // <--- 删掉了 nullptr
         rtc_engine_->RegisterMessageConsumer(msg_consumer);
 
         // 3. 统计定时器 (1秒执行一次)

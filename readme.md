@@ -62,7 +62,7 @@ nvidia@nvidia-desktop:~/galaxea/install/startup_config/share/startup_config/scri
   Action Clients:
 
 
-scp -rp gala* nvidia@10.0.42.184:~/tinker_ws
+scp -rp src* nvidia@10.0.42.184:~/tinker_ws
 
 
 appid:693faabcf5d85c01738cc612

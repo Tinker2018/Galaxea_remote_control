@@ -1,31 +1,32 @@
 #ifndef RTELE_RTC_RTC_ENGINE_H_
 #define RTELE_RTC_RTC_ENGINE_H_
 
+#include <memory>
+#include <string>
+#include <vector>
+#include <map>
+#include <set>
 #include <atomic>
 #include <functional>
-#include <map>
-#include <memory>
-#include <set>
-#include <string>
-#include <thread>
-#include <vector>
+
 #include "src/config/rtc_config.h"
 #include "absl/synchronization/mutex.h"
 
-// VolcEngine RTC SDK
-#include "bytertc_engine.h"
-#include "bytertc_room.h"
+// ==================== SDK 头文件包含策略 ====================
+#ifdef VOLC_RTC_ARM64
+    // [ARM / Orin] 3.58+ 新版 SDK
+    #include "bytertc_video.h" 
+    #include "rtc/bytertc_video_frame.h"
+    #include "bytertc_room.h"
+    #include "bytertc_room_event_handler.h"
+#else
+    // [x86 / PC] 旧版 SDK
+    #include "bytertc_engine.h"
+    #include "bytertc_room.h"
+#endif
 
 namespace rtele {
-
-// 前向声明
-namespace util {
-class VideoFileReader;
-}
-
 namespace rtc {
-
-// ==================== 视频帧相关 ====================
 
 struct VideoFrameData {
     std::vector<uint8_t> data;
@@ -33,19 +34,31 @@ struct VideoFrameData {
     int height;
     int64_t timestamp_us;
     std::string user_id;
-    std::string stream_id;
+};
+
+struct MessageData {
+    std::string user_id;
+    enum class Type { TEXT, BINARY } type;
+    std::shared_ptr<std::vector<uint8_t>> data;
+    int64_t timestamp_ms;
+
+    const uint8_t* GetData() const { return data ? data->data() : nullptr; }
+    size_t GetSize() const { return data ? data->size() : 0; }
 };
 
 using VideoFrameCallback = std::function<void(std::shared_ptr<VideoFrameData>)>;
+using MessageCallback = std::function<void(std::shared_ptr<MessageData>)>;
 
+#ifdef VOLC_RTC_ARM64
 class VideoFrameConsumer : public bytertc::IVideoSink {
+#else
+class VideoFrameConsumer : public bytertc::IVideoSink {
+#endif
 public:
-    explicit VideoFrameConsumer(const std::string& user_id, VideoFrameCallback callback);
+    VideoFrameConsumer(const std::string& user_id, VideoFrameCallback callback);
     ~VideoFrameConsumer() override = default;
-    
-    const std::string& GetUserId() const { return user_id_; }
-    
     bool onFrame(bytertc::IVideoFrame* video_frame) override;
+    
     int getRenderElapse() override { return 16; }
     void release() override {}
 
@@ -54,46 +67,13 @@ private:
     VideoFrameCallback callback_;
 };
 
-// ==================== 消息相关 ====================
-
-enum class MessageType {
-    TEXT,    // 文本消息
-    BINARY   // 二进制消息
-};
-
-struct MessageData {
-    std::string user_id;
-    MessageType type;
-    std::shared_ptr<std::vector<uint8_t>> data;
-    int64_t timestamp_ms;
-    
-    std::string AsString() const {
-        if (type == MessageType::TEXT && data && !data->empty()) {
-            return std::string(reinterpret_cast<const char*>(data->data()), data->size());
-        }
-        return "";
-    }
-    
-    const uint8_t* GetData() const { return data ? data->data() : nullptr; }
-    size_t GetSize() const { return data ? data->size() : 0; }
-};
-
-using MessageCallback = std::function<void(std::shared_ptr<MessageData>)>;
-
 class MessageConsumer {
 public:
-    explicit MessageConsumer(MessageCallback binary_callback=nullptr, MessageCallback text_callback=nullptr);
-    ~MessageConsumer() = default;
-    
-    void OnTextMessage(const std::string& user_id, const char* message, size_t length);
+    explicit MessageConsumer(MessageCallback callback);
     void OnBinaryMessage(const std::string& user_id, const uint8_t* data, size_t length);
-
 private:
-    MessageCallback binary_callback_;
-    MessageCallback text_callback_;
+    MessageCallback callback_;
 };
-
-// ==================== RTC Engine ====================
 
 class RTCEngine : public bytertc::IRTCEngineEventHandler,
                   public bytertc::IRTCRoomEventHandler {
@@ -105,75 +85,60 @@ public:
     bool JoinRoom();
     bool StartPublish();
     void StopPublish();
-    void StopSubscribe();
-    bool PushVideoFrame(const std::vector<uint8_t>& frame_data);
-    
-    // 发送文本广播消息
-    bool SendRoomMessage(const std::string& message);
-
-    // !!! 新增：发送二进制广播消息 !!!
+    void Destroy();
+    bool PushVideoFrame(const std::vector<uint8_t>& yuv_data);
     bool SendRoomBinaryMessage(const std::vector<uint8_t>& data);
-    
-    bool SubscribeRemoteStream(const bytertc::StreamInfo& stream_info);
-    void UnsubscribeRemoteStream(const bytertc::StreamInfo& stream_info);
-    
     void RegisterVideoConsumer(const std::string& user_id, std::shared_ptr<VideoFrameConsumer> consumer);
     void RegisterMessageConsumer(std::shared_ptr<MessageConsumer> consumer);
-    void Destroy();
-    bool IsRunning() const { return running_; }
 
 private:
-    // IRTCEngineEventHandler 回调
     void onWarning(int warn) override;
     void onError(int err) override;
     
-    // IRTCRoomEventHandler 回调
-    void onRoomStateChanged(const char* room_id, const char* uid, 
-                           int state, const char* extra_info) override;
-    void onLeaveRoom(const bytertc::RtcRoomStats& stats) override;
+    void onRoomStateChanged(const char* room_id, const char* uid, int state, const char* extra_info) override;
+    
+    // --- 核心差异点：onUserJoined 签名 ---
+#ifdef VOLC_RTC_ARM64
+    // ARM: 两个参数 (UserInfo, elapsed)
+    void onUserJoined(const bytertc::UserInfo& user_info, int elapsed) override;
+#else 
+    // x86: 只有一个参数 (UserInfo)
     void onUserJoined(const bytertc::UserInfo& user_info) override;
+#endif
+    
     void onUserLeave(const char* uid, bytertc::UserOfflineReason reason) override;
-    void onUserPublishStreamVideo(const char* stream_id, const bytertc::StreamInfo& stream_info, 
-                                  bool is_publish) override;
-    void onUserPublishStreamAudio(const char* stream_id, const bytertc::StreamInfo& stream_info,
-                                  bool is_publish) override;
-    
-    // 文本消息回调
-    void onRoomMessageReceived(const char* uid, const char* message) override;
 
-    // !!! 新增：二进制消息回调 !!!
+    // --- 差异回调声明 ---
+#ifdef VOLC_RTC_ARM64
+    void onUserPublishStream(const char* uid, bytertc::MediaStreamType type) override;
+    void onUserUnPublishStream(const char* uid, bytertc::MediaStreamType type, bytertc::StreamRemoveReason reason) override;
+#else 
+    // x86 旧版回调
+    void onUserPublishStreamVideo(const char* uid, const bytertc::StreamInfo& info, bool is_publish) override;
+#endif
+
     void onRoomBinaryMessageReceived(const char* uid, int size, const uint8_t* data) override;
-    
-    // 设备初始化
+
     bool InitVideoDevice();
-    bool InitAudioDevice();
-    bool InitVideoConfig();
-    bool InitAudioConfig();
-    
-    // 订阅管理
-    void CheckAndSubscribe(const bytertc::StreamInfo& stream_info);
-    bool ShouldSubscribe(const std::string& user_id) const;
+    bool CheckAndSubscribe(const std::string& user_id);
 
     config::RTCConfig config_;
-    
     std::atomic<bool> initialized_{false};
     std::atomic<bool> publishing_{false};
-    
-    bytertc::IRTCEngine* rtc_engine_ = nullptr;
+
+#ifdef VOLC_RTC_ARM64
+    bytertc::IRTCVideo* rtc_engine_ = nullptr; 
+#else
+    bytertc::IRTCEngine* rtc_engine_ = nullptr; 
+#endif
     bytertc::IRTCRoom* rtc_room_ = nullptr;
-    
-    mutable absl::Mutex subscribe_mutex_;
-    std::map<std::string, bytertc::StreamInfo> subscribed_streams_ ABSL_GUARDED_BY(subscribe_mutex_);
-    
+
     mutable absl::Mutex consumer_mutex_;
     std::map<std::string, std::shared_ptr<VideoFrameConsumer>> video_consumers_ ABSL_GUARDED_BY(consumer_mutex_);
-    std::set<std::string> subscribed_user_ids_;
     std::vector<std::shared_ptr<MessageConsumer>> message_consumers_ ABSL_GUARDED_BY(consumer_mutex_);
-
-    std::atomic<bool> running_{false};
 };
 
-}  // namespace rtc
-}  // namespace rtele
+} // namespace rtc
+} // namespace rtele
 
-#endif  // RTELE_RTC_RTC_ENGINE_H_
+#endif // RTELE_RTC_RTC_ENGINE_H_
