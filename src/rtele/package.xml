@@ -3,26 +3,30 @@
 <package format="3">
   <name>rtele</name>
   <version>0.1.0</version>
-  <description>Remote Teleoperation Application</description>
-  <maintainer email="justatest@example.com">Your Name</maintainer>
+  <description>Remote Teleoperation Application with VolcEngine RTC</description>
+  <maintainer email="justatest@example.com">Tinker</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <!-- ROS2 基础依赖 -->
+  <!-- ROS2 依赖 -->
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
+  <depend>std_srvs</depend> <!-- 新增: 用于 Trigger 服务 -->
   <depend>hdas_msg</depend>
   <depend>system_manager_msg</depend>
   <depend>teleoperation_msg_ros2</depend>
   
-  <!-- !!! 新增：图像处理依赖 !!! -->
+  <!-- 关键依赖: 机器人业务包 -->
+  <depend>galaxea_robot_tele</depend> <!-- 新增: 必须有这个才能复用 FlatBuffer 代码 -->
+
+  <!-- 图像处理 -->
   <depend>cv_bridge</depend>
   <depend>image_transport</depend>
-  
-  <!-- 系统库依赖 -->
+
+  <!-- 系统库 -->
   <depend>libopencv-dev</depend>
   <depend>libspdlog-dev</depend>
   <depend>libfmt-dev</depend>

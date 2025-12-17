@@ -65,6 +65,12 @@ nvidia@nvidia-desktop:~/galaxea/install/startup_config/share/startup_config/scri
 scp -rp gala* nvidia@10.0.42.184:~/tinker_ws
 
 
+appid:693faabcf5d85c01738cc612
+appkey:3e900dbbaf42401bb405e424b054016b
+rooid:remote_connect
+userid:robot
+robot_token:001693faabcf5d85c01738cc612SQBb3kwEn0NCaR9+S2kOAHJlbW90ZV9jb25uZWN0BQByb2JvdAYAAAAffktpAQAffktpAgAffktpAwAffktpBAAffktpBQAffktpIACKFSNgPwcNzemN5QQfbAgaBVvEfWQArz82rsKwmjwWCA==
 
-
+userid:pc
+pc_token:001693faabcf5d85c01738cc612RgAJHU8Bt0NCaTd+S2kOAHJlbW90ZV9jb25uZWN0AgBwYwYAAAA3fktpAQA3fktpAgA3fktpAwA3fktpBAA3fktpBQA3fktpIAAAsDfFSRP8OyYwdjqyz8sAF3lL7JZogZ1gE6Df1TBd8Q==
 
