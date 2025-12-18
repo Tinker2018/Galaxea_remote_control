@@ -82,6 +82,9 @@ ros2 run rtele rtele_node \
   --user_id="robot" \
   --token="001693faabcf5d85c01738cc612SQBb3kwEn0NCaR9+S2kOAHJlbW90ZV9jb25uZWN0BQByb2JvdAYAAAAffktpAQAffktpAgAffktpAwAffktpBAAffktpBQAffktpIACKFSNgPwcNzemN5QQfbAgaBVvEfWQArz82rsKwmjwWCA=="
 
+
+cd tinker_ws
+source install/setup.bash
 ros2 run rtele rtele_node \
   --role=pc \
   --app_id="693faabcf5d85c01738cc612" \
@@ -89,3 +92,7 @@ ros2 run rtele rtele_node \
   --user_id="pc" \
   --remote_user_id="robot" \
   --token="001693faabcf5d85c01738cc612RgAJHU8Bt0NCaTd+S2kOAHJlbW90ZV9jb25uZWN0AgBwYwYAAAA3fktpAQA3fktpAgA3fktpAwA3fktpBAA3fktpBQA3fktpIAAAsDfFSRP8OyYwdjqyz8sAF3lL7JZogZ1gE6Df1TBd8Q=="
+  
+  
+  
+  

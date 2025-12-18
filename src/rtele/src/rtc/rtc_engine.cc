@@ -12,6 +12,15 @@ VideoFrameConsumer::VideoFrameConsumer(const std::string& user_id, VideoFrameCal
     : user_id_(user_id), callback_(std::move(callback)) {}
 
 bool VideoFrameConsumer::onFrame(bytertc::IVideoFrame* video_frame) {
+    // [调试] 打印接收到的帧信息 (确认是否收到，以及格式是什么)
+    // 只有前几帧或每隔100帧打印一次，防止刷屏
+    static int frame_count = 0;
+    if (frame_count++ % 100 == 0) {
+        spdlog::info("Rx Frame: {}x{}, Fmt={}, TS={}", 
+            video_frame->width(), video_frame->height(), 
+            (int)video_frame->pixelFormat(), video_frame->timestampUs());
+    }
+
     if (!video_frame || !callback_) return false;
 
     auto frame_data = std::make_shared<VideoFrameData>();
@@ -20,6 +29,7 @@ bool VideoFrameConsumer::onFrame(bytertc::IVideoFrame* video_frame) {
     frame_data->timestamp_us = video_frame->timestampUs();
     frame_data->user_id = user_id_;
 
+    // 严查 I420 格式
     if (video_frame->pixelFormat() == bytertc::kVideoPixelFormatI420) {
         int y_size = frame_data->width * frame_data->height;
         int uv_size = y_size / 4;
@@ -42,12 +52,15 @@ bool VideoFrameConsumer::onFrame(bytertc::IVideoFrame* video_frame) {
 #endif
 
         uint8_t* dst = frame_data->data.data();
+        // Y Plane
         if (y_src) {
             for (int i = 0; i < frame_data->height; ++i) {
                 memcpy(dst + i * frame_data->width, y_src + i * y_stride, frame_data->width);
             }
         }
         dst += y_size;
+        
+        // UV Planes
         int uv_w = frame_data->width / 2;
         int uv_h = frame_data->height / 2;
         if (u_src) {
@@ -64,6 +77,9 @@ bool VideoFrameConsumer::onFrame(bytertc::IVideoFrame* video_frame) {
         
         callback_(frame_data);
         return true;
+    } else {
+        // 如果格式不对，打印警告
+        spdlog::warn("Unsupported PixelFormat: {}", (int)video_frame->pixelFormat());
     }
     return false;
 }
@@ -187,33 +203,47 @@ bool RTCEngine::StartPublish() {
     return true;
 }
 
-bool RTCEngine::PushVideoFrame(const std::vector<uint8_t>& yuv_data) {
+bool RTCEngine::PushVideoFrame(const std::vector<uint8_t>& frame_data) {
     if (!publishing_ || !rtc_engine_) return false;
     
     int width = config_.video_width;
     int height = config_.video_height;
-    int y_size = width * height;
-    int uv_size = y_size / 4;
+    size_t size = frame_data.size();
 
-    if (yuv_data.size() < static_cast<size_t>(y_size + uv_size * 2)) return false;
+    // 只支持 I420 (YUV420P)
+    size_t size_i420 = width * height * 3 / 2;
+
+    if (size != size_i420) {
+        // 数据大小不对，打个日志看看
+        // spdlog::warn("PushVideoFrame: Size mismatch! Expected {} got {}", size_i420, size);
+        return false;
+    }
 
 #ifdef VOLC_RTC_ARM64
     bytertc::VideoFrameBuilder builder;
     builder.frame_type = bytertc::kVideoFrameTypeRawMemory;
-    builder.pixel_fmt = bytertc::kVideoPixelFormatI420;
+    builder.pixel_fmt = bytertc::kVideoPixelFormatI420; // 强制 I420
     builder.width = width;
     builder.height = height;
     builder.timestamp_us = std::chrono::duration_cast<std::chrono::microseconds>(
                             std::chrono::steady_clock::now().time_since_epoch()).count();
-    uint8_t* raw_ptr = const_cast<uint8_t*>(yuv_data.data());
-    builder.data[0] = raw_ptr;
-    builder.data[1] = raw_ptr + y_size;
-    builder.data[2] = raw_ptr + y_size + uv_size;
+    
+    uint8_t* raw_ptr = const_cast<uint8_t*>(frame_data.data());
+    int y_size = width * height;
+    int uv_size = y_size / 4;
+
+    builder.data[0] = raw_ptr;              
+    builder.data[1] = raw_ptr + y_size;     
+    builder.data[2] = raw_ptr + y_size + uv_size; 
+    
     builder.linesize[0] = width;
     builder.linesize[1] = width / 2;
     builder.linesize[2] = width / 2;
+
     bytertc::IVideoFrame* frame = bytertc::buildVideoFrame(builder);
-    if (frame) rtc_engine_->pushExternalVideoFrame(frame);
+    if (frame) {
+        rtc_engine_->pushExternalVideoFrame(frame);
+    }
 #else
     bytertc::VideoFrameData frame;
     frame.pixel_format = bytertc::kVideoPixelFormatI420;
@@ -222,11 +252,12 @@ bool RTCEngine::PushVideoFrame(const std::vector<uint8_t>& yuv_data) {
     frame.timestamp_us = std::chrono::duration_cast<std::chrono::microseconds>(
                             std::chrono::steady_clock::now().time_since_epoch()).count();
     
-    uint8_t* raw_ptr = const_cast<uint8_t*>(yuv_data.data());
+    uint8_t* raw_ptr = const_cast<uint8_t*>(frame_data.data());
+    int y_size = width * height;
+    int uv_size = y_size / 4;
     frame.plane_data[0] = raw_ptr;
     frame.plane_data[1] = raw_ptr + y_size;
     frame.plane_data[2] = raw_ptr + y_size + uv_size;
-    
     frame.plane_stride[0] = width;
     frame.plane_stride[1] = width / 2;
     frame.plane_stride[2] = width / 2;
@@ -275,14 +306,12 @@ void RTCEngine::onUserPublishStream(const char* uid, bytertc::MediaStreamType ty
         CheckAndSubscribe(uid);
     }
 }
-// [修复] 大小写修正 Unpublish
 void RTCEngine::onUserUnpublishStream(const char*, bytertc::MediaStreamType, bytertc::StreamRemoveReason) {}
 #else
 void RTCEngine::onUserPublishStreamVideo(const char* stream_id, const bytertc::StreamInfo& info, bool is_pub) {
     if (is_pub) {
         std::string uid = info.user_id;
         std::string sid = stream_id;
-        
         absl::MutexLock lock(&consumer_mutex_);
         if (video_consumers_.count(uid)) {
             auto consumer = video_consumers_[uid];
@@ -312,9 +341,6 @@ void RTCEngine::RegisterVideoConsumer(const std::string& user_id, std::shared_pt
         key.room_id = config_.room_id.c_str();
         key.user_id = user_id.c_str();
         key.stream_index = bytertc::kStreamIndexMain;
-        // [修复] 使用全局定义的 kVideoPixelFormatI420 (数值通常为 1)
-        // 或者 IVideoSink::PixelFormat::kI420 (如果定义了)
-        // 最稳妥：bytertc::kVideoPixelFormatI420 强转
         rtc_engine_->setRemoteVideoSink(key, consumer.get(), static_cast<bytertc::IVideoSink::PixelFormat>(bytertc::kVideoPixelFormatI420));
 #else
         bytertc::RemoteVideoSinkConfig sink_config;
@@ -334,13 +360,10 @@ bool RTCEngine::CheckAndSubscribe(const std::string& user_id) {
     absl::MutexLock lock(&consumer_mutex_);
     if (video_consumers_.count(user_id)) {
         auto consumer = video_consumers_[user_id];
-        
         bytertc::RemoteStreamKey key;
         key.room_id = config_.room_id.c_str();
         key.user_id = user_id.c_str();
         key.stream_index = bytertc::kStreamIndexMain;
-        
-        // [修复] 强制转换枚举类型
         rtc_engine_->setRemoteVideoSink(key, consumer.get(), static_cast<bytertc::IVideoSink::PixelFormat>(bytertc::kVideoPixelFormatI420));
         rtc_room_->subscribeStream(user_id.c_str(), bytertc::kMediaStreamTypeVideo);
         return true;
